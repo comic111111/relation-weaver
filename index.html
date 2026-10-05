@@ -11,10 +11,18 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { max-width: 100vw; }
+    html {
+        overflow-x: clip;
+        width: 100%;
+        max-width: 100%;
+    }
     body {
-        overflow-x: hidden;
+        overflow-x: clip;
+        width: 100%;
         max-width: 100vw;
+        position: relative;
+        overscroll-behavior-x: none;
+        touch-action: pan-y;
         font-family: 'Cormorant Garamond', 'Noto Serif SC', 'Times New Roman', 'SimSun', serif;
         background: #fafafa;
         color: #222;
@@ -29,11 +37,40 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 10px;
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
         z-index: 100;
+        box-sizing: border-box;
+        max-width: 100vw;
     }
-    header h1 { font-size: 20px; font-weight: 600; letter-spacing: 2px; }
+    header > * {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
+    header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 2px;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    .mode-switch {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .mode-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        box-sizing: border-box;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .header-actions { display: flex; gap: 10px; align-items: center; }
     .btn {
         background: #fff;
@@ -56,7 +93,11 @@
         display: flex;
         gap: 16px;
         padding: 16px;
+        padding-top: calc(16px + var(--header-h, 70px));
         align-items: flex-start;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: clip;
     }
     .panel {
         width: 320px;
@@ -104,17 +145,23 @@
         min-width: 0;
         max-width: 100%;
         width: 100%;
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         align-items: center;
         overflow: auto;
-        overflow-x: hidden;
+        overflow-x: clip;
         background: #e9e9ec;
+        touch-action: auto;
     }
     .canvas-outer {
         box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         position: relative;
         margin: 24px auto;
+        max-width: 100%;
+        box-sizing: border-box;
+        overflow-x: clip;
+        touch-action: auto;
     }
     #canvas {
         position: relative;
@@ -123,6 +170,7 @@
         transform-origin: top left;
         outline: 1px dashed #b8b8b8;
         outline-offset: -1px;
+        touch-action: auto;
     }
     .layer { position: absolute; inset: 0; }
     .layer-bg { z-index: 0; pointer-events: none; }
@@ -312,12 +360,16 @@
     @media (max-width: 768px) {
         header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
         header h1 { font-size: 18px; letter-spacing: 1px; }
-        .mode-switch { width: 100%; max-width: 100%; display: flex; }
+        .mode-switch {
+            width: 100%;
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
         .mode-btn {
-            flex: 1;
+            flex: 1 1 0;
             min-width: 0;
-            padding: 10px 8px !important;
-            font-size: 13px !important;
+            padding: 10px 6px !important;
+            font-size: 12px !important;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -666,7 +718,8 @@ function applyCanvasCssSize() {
     let cssW, cssH;
     if (window.innerWidth <= 768) {
         // 移动端：同时受宽度和高度约束
-        const availableW = window.innerWidth - 36; // 左右各 16px 边距 + 4px 安全余量
+        const vw = document.documentElement.clientWidth; // 不含滚动条的视口宽
+        const availableW = vw - 32;
         const headerH = document.querySelector('header')?.offsetHeight || 0;
         const bottomBarH = document.querySelector('.mobile-bottom-bar')?.offsetHeight || 0;
         const availableH = window.innerHeight - headerH - bottomBarH - 60;
@@ -679,7 +732,7 @@ function applyCanvasCssSize() {
             cssW = availableW;
             cssH = availableW / ratio;
         }
-        cssW = Math.min(cssW, availableW);
+        cssW = Math.min(cssW, vw - 32);
     } else {
         // 桌面端不缩放
         cssW = logicalW;
@@ -1776,15 +1829,55 @@ document.addEventListener('pointerdown', e => {
     activePanel.classList.remove('open');
 });
 
+// 动态测量 header 高度并写入 CSS 变量，供 main 的 padding-top 使用
+function updateHeaderHeight() {
+    const h = document.querySelector('header')?.offsetHeight || 0;
+    document.documentElement.style.setProperty('--header-h', h + 'px');
+}
+
+// 诊断横向溢出元素，输出到控制台
+function diagnoseOverflow() {
+    const vw = document.documentElement.clientWidth;
+    const offenders = [];
+    document.querySelectorAll('body *').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.right > vw + 1 || r.left < -1 || r.width > vw + 1) {
+            offenders.push({
+                tag: el.tagName,
+                id: el.id,
+                cls: typeof el.className === 'string' ? el.className : '',
+                left: Math.round(r.left),
+                right: Math.round(r.right),
+                width: Math.round(r.width),
+                vw
+            });
+        }
+    });
+    if (offenders.length) {
+        console.warn('[Relation Weaver] 溢出元素：', offenders);
+    } else {
+        console.log('[Relation Weaver] 无横向溢出元素，视口宽 =', vw);
+    }
+    return offenders;
+}
+
+window.addEventListener('load', () => {
+    updateHeaderHeight();
+    applyCanvasCssSize();
+    diagnoseOverflow();
+});
+
 // 窗口尺寸变化时重新适配画布宽度并重渲染（移动端旋转屏幕等场景）
 let resizeTimer = null;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
+        updateHeaderHeight();
         applyCanvasCssSize();
         if (state.appMode === 'list') { renderNames(); drawConnections(); }
         else { renderTextInstances(); drawTextConnections(); }
         renderImages();
+        diagnoseOverflow();
     }, 100);
 });
 
@@ -1951,6 +2044,8 @@ function clearTextConnections() {
 
 // ============ 初始化 ============
 setCanvasSize();
+updateHeaderHeight();
+applyCanvasCssSize();
 </script>
 </body>
 </html>
