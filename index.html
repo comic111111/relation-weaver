@@ -211,6 +211,17 @@
         pointer-events: none;
         text-align: center;
     }
+    .empty-hint .hint-mobile { display: none; }
+    .empty-hint .arrow {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 28px;
+        animation: bob 1.5s infinite;
+    }
+    @keyframes bob {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(8px); }
+    }
 
     @media (max-width: 900px) {
         main { flex-direction: column; }
@@ -248,6 +259,11 @@
         background: #e63946;
         color: #fff;
     }
+    /* 平板及以下：隐藏顶部操作区，显示底部固定栏 */
+    @media (max-width: 900px) {
+        .header-actions { display: none; }
+        .mobile-bottom-bar { display: flex; }
+    }
     /* 面板抽屉把手 */
     .panel-handle {
         display: none;
@@ -282,34 +298,12 @@
             display: none;
         }
     }
-    /* 初始引导提示 */
-    .mobile-guide {
-        display: none;
-        position: absolute;
-        top: 50%; left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        color: #888;
-        pointer-events: none;
-        z-index: 50;
-    }
-    .mobile-guide .arrow {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 28px;
-        animation: bob 1.5s infinite;
-    }
-    @keyframes bob {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(8px); }
-    }
 
     @media (max-width: 768px) {
         header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
         header h1 { font-size: 18px; letter-spacing: 1px; }
         .mode-switch { width: 100%; }
         .mode-btn { flex: 1; padding: 10px !important; font-size: 13px !important; }
-        .header-actions { display: none; } /* 移动端隐藏顶部背景色/导出，由底部栏统一 */
         /* 主区域留出底部栏空间 */
         main { padding-bottom: 70px; }
         .panel {
@@ -336,10 +330,8 @@
         .toolbar input[type="number"], .toolbar select {
             font-size: 16px !important;
         }
-        .mobile-bottom-bar { display: flex; }
         .canvas-wrap { padding: 12px 16px 16px; }
         .canvas-outer { margin: 0; }
-        .canvas-actions { display: none; } /* 移动端隐藏画布下方导出，由底部栏统一 */
         /* 工具栏在移动端改为底部抽屉 */
         .toolbar {
             position: fixed !important;
@@ -377,7 +369,8 @@
             font-size: 16px;
         }
         textarea { min-height: 60px; }
-        .mobile-guide { display: block; }
+        .empty-hint .hint-desktop { display: none; }
+        .empty-hint .hint-mobile { display: block; }
     }
 
 </style>
@@ -535,17 +528,11 @@
                 <svg class="layer layer-lines" id="layerLines" xmlns="http://www.w3.org/2000/svg"></svg>
                 <div class="layer layer-text" id="layerText"></div>
                 <div class="layer layer-images-above" id="layerImagesAbove"></div>
-                <div class="empty-hint" id="emptyHint">导入名字 / 素材，开始排版</div>
-                <!-- 移动端初始引导 -->
-                <div class="mobile-guide" id="mobileGuide">
-                    <span class="arrow">↓</span>
-                    点击左下角 ☰ 打开操作面板
+                <div class="empty-hint" id="emptyHint">
+                    <span class="hint-desktop">导入名字 / 素材，开始排版</span>
+                    <span class="hint-mobile"><span class="arrow">↓</span> 点击左下角 ☰ 打开操作面板</span>
                 </div>
             </div>
-        </div>
-        <div class="canvas-actions" style="margin-top:16px;display:flex;gap:10px;align-items:center;">
-            <button class="btn btn-primary" onclick="exportImage()" style="padding:10px 28px;font-size:15px;">导出图片</button>
-            <span style="font-size:12px;color:#888;">导出画幅区域内容，分辨率为画幅尺寸的 2 倍（PNG 格式）</span>
         </div>
     </div>
 </main>
@@ -650,21 +637,37 @@ function setCanvasSize(customW, customH) {
     updateEmptyHint();
 }
 
-// 根据视口设置画布 CSS 宽度（移动端适配，不使用 transform scale）
+// 根据视口设置画布 CSS 尺寸（移动端适配宽高，不使用 transform scale）
 function applyCanvasCssSize() {
     const canvas = $('canvas');
     if (!canvas) return;
     const logicalW = state.canvasW || CANVAS_W;
     const logicalH = state.canvasH || CANVAS_W;
-    let cssW = logicalW;
-    // 移动端：宽度 = 视口宽度 - 32px（左右各 16px 边距）
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        cssW = Math.min(logicalW, window.innerWidth - 32);
+    const ratio = logicalW / logicalH;
+
+    let cssW, cssH;
+    if (window.innerWidth <= 768) {
+        // 移动端：同时受宽度和高度约束
+        const availableW = window.innerWidth - 32; // 左右各 16px 边距
+        const headerH = document.querySelector('header')?.offsetHeight || 0;
+        const bottomBarH = document.querySelector('.mobile-bottom-bar')?.offsetHeight || 0;
+        const availableH = window.innerHeight - headerH - bottomBarH - 60;
+        if (availableW / availableH > ratio) {
+            // 高度是瓶颈
+            cssH = availableH;
+            cssW = availableH * ratio;
+        } else {
+            // 宽度是瓶颈
+            cssW = availableW;
+            cssH = availableW / ratio;
+        }
+    } else {
+        // 桌面端不缩放
+        cssW = logicalW;
+        cssH = logicalH;
     }
-    const cssH = Math.round(cssW * (logicalH / logicalW));
-    canvas.style.width = cssW + 'px';
-    canvas.style.height = cssH + 'px';
+    canvas.style.width = Math.round(cssW) + 'px';
+    canvas.style.height = Math.round(cssH) + 'px';
 }
 
 function setRatio(r) {
@@ -708,8 +711,6 @@ function updateEmptyHint() {
     const hasText = state.appMode === 'text' ? state.textInstances.length > 0 : state.names.length > 0;
     const hasContent = hasText || state.images.length > 0;
     hint.style.display = hasContent ? 'none' : 'block';
-    // 有内容时隐藏移动端引导
-    if (hasContent) hideMobileGuide();
 }
 
 // ============ 名字 ============
@@ -1736,8 +1737,6 @@ function togglePanel() {
     const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
     if (!activePanel) return;
     activePanel.classList.toggle('open');
-    // 打开面板时隐藏引导提示
-    if (activePanel.classList.contains('open')) hideMobileGuide();
 }
 
 // 步骤折叠：点击标题切换展开/收起
@@ -1749,11 +1748,6 @@ document.addEventListener('click', e => {
     section.classList.toggle('collapsed');
 });
 
-// 隐藏移动端引导提示（用户开始操作后）
-function hideMobileGuide() {
-    const g = $('mobileGuide');
-    if (g) g.style.display = 'none';
-}
 // 点击移动端面板外部关闭
 document.addEventListener('pointerdown', e => {
     const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
