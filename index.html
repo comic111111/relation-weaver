@@ -218,63 +218,129 @@
     }
 
     /* ============ 移动端适配 ============ */
-    .panel-toggle {
+    /* 底部固定栏（移动端） */
+    .mobile-bottom-bar {
         display: none;
         position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 999;
+        bottom: 0; left: 0; right: 0;
+        height: 56px;
         background: #1a1a1a;
-        color: #fff;
-        border: none;
-        border-radius: 50%;
-        width: 48px;
-        height: 48px;
-        font-size: 20px;
-        cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        z-index: 998;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
     }
-    .mobile-export-btn {
-        display: none;
-        position: fixed;
-        bottom: 16px;
-        right: 16px;
-        z-index: 999;
-        background: #1a1a1a;
-        color: #fff;
+    .mobile-bottom-bar .bar-btn {
+        background: #fff;
+        color: #1a1a1a;
         border: none;
-        border-radius: 24px;
-        padding: 0 20px;
-        height: 48px;
-        font-size: 14px;
+        border-radius: 8px;
+        height: 44px;
+        padding: 0 18px;
+        font-size: 15px;
         font-weight: 700;
         cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         font-family: inherit;
+        min-width: 44px;
+    }
+    .mobile-bottom-bar .bar-btn.primary {
+        background: #e63946;
+        color: #fff;
+    }
+    /* 面板抽屉把手 */
+    .panel-handle {
+        display: none;
+        width: 40px;
+        height: 5px;
+        background: #ccc;
+        border-radius: 3px;
+        margin: 10px auto 6px;
+    }
+    /* 步骤折叠（仅移动端） */
+    .panel section.step > .step-head {
+        user-select: none;
     }
     @media (max-width: 768px) {
+        .panel section.step > .step-head {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel section.step > .step-head::after {
+            content: '▾';
+            margin-left: auto;
+            transition: transform 0.2s;
+            font-size: 12px;
+            color: #888;
+        }
+        .panel section.step.collapsed > .step-head::after {
+            transform: rotate(-90deg);
+        }
+        .panel section.step.collapsed > .step-body {
+            display: none;
+        }
+    }
+    /* 初始引导提示 */
+    .mobile-guide {
+        display: none;
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #888;
+        pointer-events: none;
+        z-index: 50;
+    }
+    .mobile-guide .arrow {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 28px;
+        animation: bob 1.5s infinite;
+    }
+    @keyframes bob {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(8px); }
+    }
+
+    @media (max-width: 768px) {
         header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
-        header h1 { font-size: 20px; }
+        header h1 { font-size: 18px; letter-spacing: 1px; }
         .mode-switch { width: 100%; }
         .mode-btn { flex: 1; padding: 10px !important; font-size: 13px !important; }
-        .header-actions { width: 100%; justify-content: space-between; }
+        .header-actions { display: none; } /* 移动端隐藏顶部背景色/导出，由底部栏统一 */
+        /* 主区域留出底部栏空间 */
+        main { padding-bottom: 70px; }
         .panel {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            left: 0; right: 0; bottom: 0;
+            top: auto;
             width: 100%;
             max-width: none;
-            height: 100vh;
-            max-height: none;
+            height: 58vh;
+            max-height: 58vh;
             z-index: 900;
-            transform: translateX(-100%);
+            transform: translateY(100%);
             transition: transform 0.3s ease;
             overflow-y: auto;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+            padding-bottom: 20px;
         }
-        .panel.open { transform: translateX(0); }
-        .panel-toggle { display: flex; align-items: center; justify-content: center; }
-        .mobile-export-btn { display: block; }
-        .canvas-wrap { padding: 8px; }
-        /* 工具栏在移动端改为底部全屏抽屉 */
+        .panel.open { transform: translateY(0); }
+        .panel-handle { display: block; }
+        .panel section { margin-bottom: 12px; padding-bottom: 12px; }
+        /* 输入框 ≥16px 防止 iOS 自动缩放 */
+        .panel input[type="text"], .panel textarea, .panel input[type="number"], .panel select,
+        .toolbar input[type="number"], .toolbar select {
+            font-size: 16px !important;
+        }
+        .mobile-bottom-bar { display: flex; }
+        .canvas-wrap { padding: 12px 16px 16px; }
+        .canvas-outer { margin: 0; }
+        .canvas-actions { display: none; } /* 移动端隐藏画布下方导出，由底部栏统一 */
+        /* 工具栏在移动端改为底部抽屉 */
         .toolbar {
             position: fixed !important;
             bottom: 0 !important;
@@ -284,10 +350,10 @@
             width: 100% !important;
             max-width: 100% !important;
             border-radius: 12px 12px 0 0;
-            padding: 14px 16px;
+            padding: 14px 16px 70px; /* 底部留出固定栏空间 */
             font-size: 14px;
             z-index: 950;
-            max-height: 50vh;
+            max-height: 55vh;
             overflow-y: auto;
         }
         .toolbar input[type="color"] { width: 44px; height: 44px; }
@@ -306,12 +372,14 @@
             min-width: 44px;
         }
         .btn-sm { min-height: 40px; padding: 8px 14px; }
-        input[type="text"], textarea, select {
+        input[type="text"], input[type="number"], textarea, select {
             min-height: 44px;
             font-size: 16px;
         }
         textarea { min-height: 60px; }
+        .mobile-guide { display: block; }
     }
+
 </style>
 </head>
 <body>
@@ -333,114 +401,129 @@
 
 <main>
     <aside class="panel" id="panelList">
-        <section>
-            <h3>① 画幅比例</h3>
-            <div class="ratio-group" id="ratioGroup">
-                <label><input type="radio" name="ratio" value="1:1" checked><span>1:1</span></label>
-                <label><input type="radio" name="ratio" value="16:9"><span>16:9</span></label>
-                <label><input type="radio" name="ratio" value="9:16"><span>9:16</span></label>
-                <label><input type="radio" name="ratio" value="4:3"><span>4:3</span></label>
-                <label><input type="radio" name="ratio" value="3:4"><span>3:4</span></label>
+        <div class="panel-handle"></div>
+        <section class="step">
+            <h3 class="step-head">① 画幅比例</h3>
+            <div class="step-body">
+                <div class="ratio-group" id="ratioGroup">
+                    <label><input type="radio" name="ratio" value="1:1" checked><span>1:1</span></label>
+                    <label><input type="radio" name="ratio" value="16:9"><span>16:9</span></label>
+                    <label><input type="radio" name="ratio" value="9:16"><span>9:16</span></label>
+                    <label><input type="radio" name="ratio" value="4:3"><span>4:3</span></label>
+                    <label><input type="radio" name="ratio" value="3:4"><span>3:4</span></label>
+                </div>
             </div>
         </section>
 
-        <section>
-            <h3>② 导入名字名单</h3>
-            <label>每行一个名字</label>
-            <textarea id="nameInput" placeholder="A&#10;B&#10;C&#10;D"></textarea>
-            <div class="row">
-                <button class="btn btn-sm" onclick="importNames()">导入名字</button>
-                <button class="btn btn-sm" onclick="clearNames()">清空名字</button>
+        <section class="step">
+            <h3 class="step-head">② 导入名字名单</h3>
+            <div class="step-body">
+                <label>每行一个名字</label>
+                <textarea id="nameInput" placeholder="A&#10;B&#10;C&#10;D"></textarea>
+                <div class="row">
+                    <button class="btn btn-sm" onclick="importNames()">导入名字</button>
+                    <button class="btn btn-sm" onclick="clearNames()">清空名字</button>
+                </div>
             </div>
         </section>
 
-        <section>
-            <h3>③ 名字排版</h3>
-            <label>排版模式</label>
-            <div class="row" style="margin-bottom:8px;">
-                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
-                    <input type="radio" name="layoutMode" value="random" checked onchange="setLayoutMode(this.value)"> 随机模式
-                </label>
-                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
-                    <input type="radio" name="layoutMode" value="layered" onchange="setLayoutMode(this.value)"> 分层模式
-                </label>
+        <section class="step collapsed">
+            <h3 class="step-head">③ 名字排版</h3>
+            <div class="step-body">
+                <label>排版模式</label>
+                <div class="row" style="margin-bottom:8px;">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                        <input type="radio" name="layoutMode" value="random" checked onchange="setLayoutMode(this.value)"> 随机模式
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                        <input type="radio" name="layoutMode" value="layered" onchange="setLayoutMode(this.value)"> 分层模式
+                    </label>
+                </div>
+                <div class="row" style="margin-bottom:8px;">
+                    <button class="btn btn-sm btn-primary" onclick="randomLayout()">随机排版</button>
+                    <button class="btn btn-sm" onclick="randomAssignLayers()" id="btnAssignLayers" style="display:none;">随机分配层级</button>
+                </div>
+                <div class="row" style="margin-bottom:8px;">
+                    <button class="btn btn-sm" onclick="toggleAllOrientation()">横排 / 纵排 切换</button>
+                </div>
+                <label>统一字号 (px)</label>
+                <input type="range" id="globalFontSize" min="12" max="80" value="28" oninput="applyGlobalFont(this.value)">
+                <label>统一颜色</label>
+                <div class="row" style="margin-bottom:8px;">
+                    <input type="color" id="globalColor" value="#222222">
+                    <button class="btn btn-sm" onclick="applyGlobalColor()">应用到全部</button>
+                </div>
+                <p style="font-size:11px;color:#888;">提示：点击画布上的名字可单独调整字号、颜色、透明度、层级和方向。</p>
             </div>
-            <div class="row" style="margin-bottom:8px;">
-                <button class="btn btn-sm btn-primary" onclick="randomLayout()">随机排版</button>
-                <button class="btn btn-sm" onclick="randomAssignLayers()" id="btnAssignLayers" style="display:none;">随机分配层级</button>
-            </div>
-            <div class="row" style="margin-bottom:8px;">
-                <button class="btn btn-sm" onclick="toggleAllOrientation()">横排 / 纵排 切换</button>
-            </div>
-            <label>统一字号 (px)</label>
-            <input type="range" id="globalFontSize" min="12" max="80" value="28" oninput="applyGlobalFont(this.value)">
-            <label>统一颜色</label>
-            <div class="row" style="margin-bottom:8px;">
-                <input type="color" id="globalColor" value="#222222">
-                <button class="btn btn-sm" onclick="applyGlobalColor()">应用到全部</button>
-            </div>
-            <p style="font-size:11px;color:#888;">提示：点击画布上的名字可单独调整字号、颜色、透明度、层级和方向。</p>
         </section>
 
-        <section>
-            <h3>④ 连线配对</h3>
-            <label>每行一对，格式：名字A × 名字B</label>
-            <textarea id="connInput" placeholder="A × B&#10;C × D"></textarea>
-            <div class="row" style="margin-bottom:8px;">
-                <button class="btn btn-sm" onclick="importConnections()">导入连线</button>
-                <button class="btn btn-sm" onclick="clearConnections()">清空连线</button>
+        <section class="step collapsed">
+            <h3 class="step-head">④ 连线配对</h3>
+            <div class="step-body">
+                <label>每行一对，格式：名字A × 名字B</label>
+                <textarea id="connInput" placeholder="A × B&#10;C × D"></textarea>
+                <div class="row" style="margin-bottom:8px;">
+                    <button class="btn btn-sm" onclick="importConnections()">导入连线</button>
+                    <button class="btn btn-sm" onclick="clearConnections()">清空连线</button>
+                </div>
+                <label>线宽：<span id="lineWidthVal">2</span> px</label>
+                <input type="range" id="lineWidth" min="1" max="10" value="2" oninput="document.getElementById('lineWidthVal').textContent=this.value; drawConnections()">
+                <label>透明度：<span id="lineOpacityVal">100</span>%</label>
+                <input type="range" id="lineOpacity" min="10" max="100" value="100" oninput="document.getElementById('lineOpacityVal').textContent=this.value; drawConnections()">
             </div>
-            <label>线宽：<span id="lineWidthVal">2</span> px</label>
-            <input type="range" id="lineWidth" min="1" max="10" value="2" oninput="document.getElementById('lineWidthVal').textContent=this.value; drawConnections()">
-            <label>透明度：<span id="lineOpacityVal">100</span>%</label>
-            <input type="range" id="lineOpacity" min="10" max="100" value="100" oninput="document.getElementById('lineOpacityVal').textContent=this.value; drawConnections()">
         </section>
 
-        <section>
-            <h3>⑤ PNG 素材</h3>
-            <input type="file" id="imgUpload" accept="image/png,image/jpeg,image/webp" multiple style="display:none">
-            <div class="row">
-                <button class="btn btn-sm" onclick="document.getElementById('imgUpload').click()">上传 PNG</button>
+        <section class="step collapsed">
+            <h3 class="step-head">⑤ PNG 素材</h3>
+            <div class="step-body">
+                <input type="file" id="imgUpload" accept="image/png,image/jpeg,image/webp" multiple style="display:none">
+                <div class="row">
+                    <button class="btn btn-sm" onclick="document.getElementById('imgUpload').click()">上传 PNG</button>
+                </div>
+                <p style="font-size:11px;color:#888;margin-top:6px;">点击素材可拖动，右下角拖点可缩放。可设置在文字上方或下方。</p>
             </div>
-            <p style="font-size:11px;color:#888;margin-top:6px;">点击素材可拖动，右下角拖点可缩放。可设置在文字上方或下方。</p>
         </section>
     </aside>
 
     <!-- 文本连线模式面板 -->
     <aside class="panel" id="panelText" style="display:none;">
-        <section>
-            <h3>文本连线模式</h3>
-            <p style="font-size:12px;color:#666;margin-bottom:8px;">粘贴任意文本，输入配对名单，将文本中所有出现的配对名字用红线两两相连。</p>
-        </section>
-        <section>
-            <h3>① 粘贴文本</h3>
-            <textarea id="textInput" style="min-height:160px;" placeholder="A B C A B"></textarea>
-        </section>
-        <section>
-            <h3>② 配对名单</h3>
-            <label>每行一对，格式：名字A × 名字B</label>
-            <textarea id="textConnInput" placeholder="A × B&#10;C × D"></textarea>
-            <div class="row" style="margin-bottom:8px;">
-                <button class="btn btn-sm btn-primary" onclick="generateTextConnections()">生成连线</button>
-                <button class="btn btn-sm" onclick="clearTextConnections()">清空</button>
+        <div class="panel-handle"></div>
+        <section class="step">
+            <h3 class="step-head">① 粘贴文本</h3>
+            <div class="step-body">
+                <p style="font-size:12px;color:#666;margin-bottom:8px;">粘贴任意文本，输入配对名单，将文本中所有出现的配对名字用红线两两相连。</p>
+                <textarea id="textInput" style="min-height:120px;" placeholder="A B C A B"></textarea>
             </div>
         </section>
-        <section>
-            <h3>③ 样式</h3>
-            <label>排版模式</label>
-            <div class="row" style="margin-bottom:8px;">
-                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
-                    <input type="radio" name="textLayoutMode" value="random" checked> 随机
-                </label>
-                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
-                    <input type="radio" name="textLayoutMode" value="layered"> 分层
-                </label>
+        <section class="step">
+            <h3 class="step-head">② 配对名单</h3>
+            <div class="step-body">
+                <label>每行一对，格式：名字A × 名字B</label>
+                <textarea id="textConnInput" placeholder="A × B&#10;C × D"></textarea>
+                <div class="row" style="margin-bottom:8px;">
+                    <button class="btn btn-sm btn-primary" onclick="generateTextConnections()">生成连线</button>
+                    <button class="btn btn-sm" onclick="clearTextConnections()">清空</button>
+                </div>
             </div>
-            <label>线宽：<span id="textLineWidthVal">2</span> px</label>
-            <input type="range" id="textLineWidth" min="1" max="10" value="2" oninput="document.getElementById('textLineWidthVal').textContent=this.value; drawTextConnections()">
-            <label>全局透明度：<span id="textLineOpacityVal">100</span>%</label>
-            <input type="range" id="textLineOpacity" min="10" max="100" value="100" oninput="document.getElementById('textLineOpacityVal').textContent=this.value; drawTextConnections()">
-            <p style="font-size:11px;color:#888;margin-top:6px;">线透明度自动取两端名字透明度的平均值。每对最多绘制 200 条线。</p>
+        </section>
+        <section class="step collapsed">
+            <h3 class="step-head">③ 样式</h3>
+            <div class="step-body">
+                <label>排版模式</label>
+                <div class="row" style="margin-bottom:8px;">
+                    <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                        <input type="radio" name="textLayoutMode" value="random" checked> 随机
+                    </label>
+                    <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                        <input type="radio" name="textLayoutMode" value="layered"> 分层
+                    </label>
+                </div>
+                <label>线宽：<span id="textLineWidthVal">2</span> px</label>
+                <input type="range" id="textLineWidth" min="1" max="10" value="2" oninput="document.getElementById('textLineWidthVal').textContent=this.value; drawTextConnections()">
+                <label>全局透明度：<span id="textLineOpacityVal">100</span>%</label>
+                <input type="range" id="textLineOpacity" min="10" max="100" value="100" oninput="document.getElementById('textLineOpacityVal').textContent=this.value; drawTextConnections()">
+                <p style="font-size:11px;color:#888;margin-top:6px;">线透明度自动取两端名字透明度的平均值。每对最多绘制 200 条线。</p>
+            </div>
         </section>
     </aside>
 
@@ -453,6 +536,11 @@
                 <div class="layer layer-text" id="layerText"></div>
                 <div class="layer layer-images-above" id="layerImagesAbove"></div>
                 <div class="empty-hint" id="emptyHint">导入名字 / 素材，开始排版</div>
+                <!-- 移动端初始引导 -->
+                <div class="mobile-guide" id="mobileGuide">
+                    <span class="arrow">↓</span>
+                    点击左下角 ☰ 打开操作面板
+                </div>
             </div>
         </div>
         <div class="canvas-actions" style="margin-top:16px;display:flex;gap:10px;align-items:center;">
@@ -493,9 +581,11 @@
     <button onclick="deselect()" title="关闭">✕</button>
 </div>
 
-<!-- 移动端：面板切换按钮 + 固定导出按钮 -->
-<button class="panel-toggle" id="panelToggle" onclick="togglePanel()" aria-label="打开操作面板">☰</button>
-<button class="mobile-export-btn" onclick="exportImage()">导出图片</button>
+<!-- 移动端底部固定栏 -->
+<div class="mobile-bottom-bar" id="mobileBottomBar">
+    <button class="bar-btn" id="panelToggle" onclick="togglePanel()" aria-label="打开操作面板">☰ 操作</button>
+    <button class="bar-btn primary" onclick="exportImage()">导出图片</button>
+</div>
 
 <script>
 // ============ 状态 ============
@@ -512,10 +602,28 @@ const state = {
     zCounter: 10,
     appMode: 'list',  // 'list' | 'text'
     textPairs: [],    // {aText, bText}
-    textInstances: [] // {id, text, x, y, fontSize, color, opacity, layer, pairKey, side}
+    textInstances: [], // {id, text, x, y, fontSize, color, opacity, layer, pairKey, side}
+    canvasW: 800,     // 画布逻辑宽度（坐标系统基准）
+    canvasH: 800      // 画布逻辑高度
 };
 
 const CANVAS_W = 800; // 画布逻辑宽度（固定，用于坐标计算）
+
+// 获取当前画布逻辑尺寸
+function getLogicalCanvasSize() {
+    return { w: state.canvasW || CANVAS_W, h: state.canvasH || CANVAS_W };
+}
+
+// 渲染缩放比 = 实际渲染宽度 / 逻辑宽度
+function getScale() {
+    const canvas = $('canvas');
+    if (!canvas) return 1;
+    const logicalW = state.canvasW || CANVAS_W;
+    const renderedW = canvas.clientWidth || logicalW;
+    return renderedW / logicalW;
+}
+// 逻辑坐标 → 渲染像素
+function toPx(v) { return v * getScale(); }
 
 // ============ 画布尺寸 ============
 function ratioToSize(ratio) {
@@ -528,42 +636,35 @@ function setCanvasSize(customW, customH) {
     const base = ratioToSize(state.ratio);
     const w = customW || base.w;
     const h = customH || base.h;
+    // 记录逻辑尺寸（坐标系统基准）
+    state.canvasW = w;
+    state.canvasH = h;
     const canvas = document.getElementById('canvas');
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
+    // 直接设置 CSS 尺寸（桌面=逻辑尺寸，移动端=屏幕适配宽度）
+    applyCanvasCssSize();
     const svg = document.getElementById('layerLines');
-    svg.setAttribute('width', w);
-    svg.setAttribute('height', h);
+    // SVG 通过 100% 宽高自适应画布，viewBox 由 drawConnections 按渲染尺寸设置
+    svg.style.width = '100%';
+    svg.style.height = '100%';
     drawConnections();
     updateEmptyHint();
-    scaleCanvasForMobile();
 }
 
-// 移动端画布自适应：按容器宽度等比缩放
-function scaleCanvasForMobile() {
-    const outer = $('canvasOuter');
+// 根据视口设置画布 CSS 宽度（移动端适配，不使用 transform scale）
+function applyCanvasCssSize() {
     const canvas = $('canvas');
-    if (!outer || !canvas) return;
-    // 清除之前的缩放
-    outer.style.transform = '';
-    outer.style.width = '';
-    outer.style.height = '';
-    const cw = canvas.offsetWidth;
-    const ch = canvas.offsetHeight;
-    if (cw === 0) return;
-    // 可用宽度：视口宽度减去边距
-    const available = window.innerWidth - 32;
-    if (cw <= available) {
-        // 桌面端或足够宽，不缩放
-        return;
+    if (!canvas) return;
+    const logicalW = state.canvasW || CANVAS_W;
+    const logicalH = state.canvasH || CANVAS_W;
+    let cssW = logicalW;
+    // 移动端：宽度 = 视口宽度 - 32px（左右各 16px 边距）
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        cssW = Math.min(logicalW, window.innerWidth - 32);
     }
-    const scale = available / cw;
-    outer.style.transformOrigin = 'top left';
-    outer.style.transform = `scale(${scale})`;
-    outer.style.width = cw + 'px';
-    outer.style.height = ch + 'px';
-    // 让外层容器占据缩放后的实际高度，避免布局塌陷
-    outer.style.marginBottom = (ch * scale - ch) + 'px';
+    const cssH = Math.round(cssW * (logicalH / logicalW));
+    canvas.style.width = cssW + 'px';
+    canvas.style.height = cssH + 'px';
 }
 
 function setRatio(r) {
@@ -592,24 +693,23 @@ function autoRelayout() {
 
 // ============ 工具 ============
 function $(id) { return document.getElementById(id); }
-function getCanvasScale() {
-    const canvas = $('canvas');
-    const rect = canvas.getBoundingClientRect();
-    return { sx: canvas.offsetWidth / rect.width, sy: canvas.offsetHeight / rect.height };
-}
+// 将客户端坐标转换为画布逻辑坐标（考虑渲染缩放）
 function clientToCanvas(clientX, clientY) {
     const canvas = $('canvas');
     const rect = canvas.getBoundingClientRect();
-    const { sx, sy } = getCanvasScale();
+    const s = getScale();
     return {
-        x: (clientX - rect.left) * sx,
-        y: (clientY - rect.top) * sy
+        x: (clientX - rect.left) / s,
+        y: (clientY - rect.top) / s
     };
 }
 function updateEmptyHint() {
     const hint = $('emptyHint');
     const hasText = state.appMode === 'text' ? state.textInstances.length > 0 : state.names.length > 0;
-    hint.style.display = (!hasText && state.images.length === 0) ? 'block' : 'none';
+    const hasContent = hasText || state.images.length > 0;
+    hint.style.display = hasContent ? 'none' : 'block';
+    // 有内容时隐藏移动端引导
+    if (hasContent) hideMobileGuide();
 }
 
 // ============ 名字 ============
@@ -655,13 +755,14 @@ function clearNames() {
 function renderNames() {
     const layer = $('layerText');
     layer.innerHTML = '';
+    const s = getScale();
     state.names.forEach(n => {
         const el = document.createElement('div');
         el.className = 'name-el' + (n.vertical ? ' vertical' : '') + (state.selected && state.selected.type === 'name' && state.selected.id === n.id ? ' selected' : '');
         el.dataset.id = n.id;
-        el.style.left = n.x + 'px';
-        el.style.top = n.y + 'px';
-        el.style.fontSize = n.fontSize + 'px';
+        el.style.left = (n.x * s) + 'px';
+        el.style.top = (n.y * s) + 'px';
+        el.style.fontSize = (n.fontSize * s) + 'px';
         el.style.color = n.color;
         el.style.opacity = n.opacity;
         el.style.zIndex = n.zIndex;
@@ -1052,9 +1153,9 @@ $('imgUpload').addEventListener('change', e => {
                     w = Math.round(w * r);
                     h = Math.round(h * r);
                 }
-                const canvas = $('canvas');
-                const cw = canvas.offsetWidth;
-                const ch = canvas.offsetHeight;
+                const logical = getLogicalCanvasSize();
+                const cw = logical.w;
+                const ch = logical.h;
                 // 限制图片最大尺寸不超过画幅
                 const fitScale = Math.min(1, cw / w, ch / h);
                 w = Math.round(w * fitScale);
@@ -1084,14 +1185,15 @@ function renderImages() {
     const above = $('layerImagesAbove');
     below.innerHTML = '';
     above.innerHTML = '';
+    const s = getScale();
     state.images.forEach(img => {
         const el = document.createElement('div');
         el.className = 'img-el' + (state.selected && state.selected.type === 'image' && state.selected.id === img.id ? ' selected' : '');
         el.dataset.id = img.id;
-        el.style.left = img.x + 'px';
-        el.style.top = img.y + 'px';
-        el.style.width = img.w + 'px';
-        el.style.height = img.h + 'px';
+        el.style.left = (img.x * s) + 'px';
+        el.style.top = (img.y * s) + 'px';
+        el.style.width = (img.w * s) + 'px';
+        el.style.height = (img.h * s) + 'px';
         el.innerHTML = `<img src="${img.src}" alt=""><div class="layer-tag">${img.aboveText ? '文字上方' : '文字下方'}</div><div class="resize-handle"></div>`;
         el.addEventListener('pointerdown', e => {
             if (e.target.classList.contains('resize-handle')) {
@@ -1143,33 +1245,33 @@ function onDrag(e) {
     if (!dragState.moved) return;
     let nx = dragState.origX + dx;
     let ny = dragState.origY + dy;
-    const canvas = $('canvas');
-    const cw = canvas.offsetWidth;
-    const ch = canvas.offsetHeight;
+    // 使用逻辑画布尺寸做边界钳制
+    const logical = getLogicalCanvasSize();
+    const s = getScale();
     const item = getItemByType(dragState.type, dragState.id);
     if (!item) return;
-    // 使用元素实际渲染尺寸做边界钳制，确保完全在画幅内
     let ew, eh;
     if (dragState.type === 'image') {
         ew = item.w;
         eh = item.h;
     } else {
         const el = document.querySelector(`.name-el[data-id="${dragState.id}"]`);
-        ew = el ? el.offsetWidth : 0;
-        eh = el ? el.offsetHeight : 0;
+        // 元素渲染尺寸（屏幕像素）转为逻辑尺寸
+        ew = el ? el.offsetWidth / s : 0;
+        eh = el ? el.offsetHeight / s : 0;
     }
-    const maxX = Math.max(0, cw - ew);
-    const maxY = Math.max(0, ch - eh);
+    const maxX = Math.max(0, logical.w - ew);
+    const maxY = Math.max(0, logical.h - eh);
     nx = Math.max(0, Math.min(maxX, nx));
     ny = Math.max(0, Math.min(maxY, ny));
     item.x = nx;
     item.y = ny;
     if (dragState.type === 'image') {
         const el = document.querySelector(`.img-el[data-id="${dragState.id}"]`);
-        if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+        if (el) { el.style.left = toPx(nx) + 'px'; el.style.top = toPx(ny) + 'px'; }
     } else {
         const el = document.querySelector(`.name-el[data-id="${dragState.id}"]`);
-        if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+        if (el) { el.style.left = toPx(nx) + 'px'; el.style.top = toPx(ny) + 'px'; }
         if (dragState.type === 'textInst') drawTextConnections();
         else drawConnections();
     }
@@ -1199,26 +1301,26 @@ function startResize(e, id) {
 }
 function onResize(e) {
     if (!resizeState) return;
-    const dx = e.clientX - resizeState.startX;
-    const dy = e.clientY - resizeState.startY;
+    const s = getScale();
+    // 屏幕像素位移转为逻辑坐标位移
+    const dx = (e.clientX - resizeState.startX) / s;
+    const dy = (e.clientY - resizeState.startY) / s;
     const ratio = resizeState.origW / resizeState.origH;
     let newW = resizeState.origW + dx;
     let newH = newW / ratio;
     if (newW < 20) { newW = 20; newH = newW / ratio; }
-    // 边界限制：缩放后不能超出画幅
-    const canvas = $('canvas');
-    const cw = canvas.offsetWidth;
-    const ch = canvas.offsetHeight;
+    // 边界限制：缩放后不能超出画幅（使用逻辑尺寸）
+    const logical = getLogicalCanvasSize();
     const img = state.images.find(i => i.id === resizeState.id);
-    const maxW = Math.max(20, cw - img.x);
-    const maxH = Math.max(20, ch - img.y);
+    const maxW = Math.max(20, logical.w - img.x);
+    const maxH = Math.max(20, logical.h - img.y);
     // 保持宽高比，取更严格的那个约束
     if (newW > maxW) { newW = maxW; newH = newW / ratio; }
     if (newH > maxH) { newH = maxH; newW = newH * ratio; }
     img.w = Math.round(newW);
     img.h = Math.round(newH);
     const el = document.querySelector(`.img-el[data-id="${resizeState.id}"]`);
-    if (el) { el.style.width = img.w + 'px'; el.style.height = img.h + 'px'; }
+    if (el) { el.style.width = toPx(img.w) + 'px'; el.style.height = toPx(img.h) + 'px'; }
 }
 function endResize() {
     resizeState = null;
@@ -1317,7 +1419,7 @@ $('tbFontSize').addEventListener('input', e => {
     n.fontSize = parseInt(e.target.value);
     n.manuallyAdjusted = true;
     const el = document.querySelector(`.name-el[data-id="${n.id}"]`);
-    if (el) el.style.fontSize = n.fontSize + 'px';
+    if (el) el.style.fontSize = (n.fontSize * getScale()) + 'px';
     redrawTextConnections();
 });
 $('tbColor').addEventListener('input', e => {
@@ -1416,10 +1518,6 @@ $('canvas').addEventListener('pointerdown', e => {
         deselect();
     }
 });
-window.addEventListener('resize', () => {
-    positionToolbar();
-    scaleCanvasForMobile();
-});
 window.addEventListener('scroll', positionToolbar, true);
 
 // ============ 背景颜色 ============
@@ -1441,15 +1539,17 @@ function getActiveTextItems() {
 }
 // 检查并修复超出画幅的元素，返回是否有元素被调整
 function clampAllToCanvas() {
-    const canvas = $('canvas');
-    const cw = canvas.offsetWidth;
-    const ch = canvas.offsetHeight;
+    const logical = getLogicalCanvasSize();
+    const cw = logical.w;
+    const ch = logical.h;
+    const s = getScale();
     let adjusted = false;
     const items = getActiveTextItems();
     items.forEach(item => {
         const el = document.querySelector(`.name-el[data-id="${item.id}"]`);
-        const ew = el ? el.offsetWidth : 0;
-        const eh = el ? el.offsetHeight : 0;
+        // 渲染尺寸（屏幕像素）转为逻辑尺寸
+        const ew = el ? el.offsetWidth / s : 0;
+        const eh = el ? el.offsetHeight / s : 0;
         const maxX = Math.max(0, cw - ew);
         const maxY = Math.max(0, ch - eh);
         const nx = Math.max(0, Math.min(maxX, item.x));
@@ -1477,14 +1577,15 @@ function clampAllToCanvas() {
 
 // 检测是否有元素超出画幅
 function hasElementsOutOfBounds() {
-    const canvas = $('canvas');
-    const cw = canvas.offsetWidth;
-    const ch = canvas.offsetHeight;
+    const logical = getLogicalCanvasSize();
+    const cw = logical.w;
+    const ch = logical.h;
+    const s = getScale();
     const items = getActiveTextItems();
     for (const item of items) {
         const el = document.querySelector(`.name-el[data-id="${item.id}"]`);
-        const ew = el ? el.offsetWidth : 0;
-        const eh = el ? el.offsetHeight : 0;
+        const ew = el ? el.offsetWidth / s : 0;
+        const eh = el ? el.offsetHeight / s : 0;
         if (item.x < 0 || item.y < 0 || item.x + ew > cw || item.y + eh > ch) return true;
     }
     for (const img of state.images) {
@@ -1548,6 +1649,16 @@ async function exportImage() {
     // 按钮加载状态
     const btns = Array.from(document.querySelectorAll('button')).filter(b => b.textContent.trim() === '导出图片');
     btns.forEach(b => { b.disabled = true; b.textContent = '导出中...'; b.style.opacity = '0.6'; });
+    // 导出前临时将画布恢复到逻辑尺寸，确保导出分辨率 = 逻辑尺寸 × 2
+    const logical = getLogicalCanvasSize();
+    const savedCssW = canvas.style.width;
+    const savedCssH = canvas.style.height;
+    canvas.style.width = logical.w + 'px';
+    canvas.style.height = logical.h + 'px';
+    // 恢复所有子元素的逻辑坐标渲染（scale=1）
+    if (state.appMode === 'list') renderNames(); else renderTextInstances();
+    renderImages();
+    if (state.appMode === 'list') drawConnections(); else drawTextConnections();
     try {
         const result = await html2canvas(canvas, {
             backgroundColor: state.bgColor || '#ffffff',
@@ -1555,10 +1666,10 @@ async function exportImage() {
             useCORS: true,
             logging: false,
             allowTaint: false,
-            width: canvas.offsetWidth,
-            height: canvas.offsetHeight,
-            windowWidth: canvas.offsetWidth,
-            windowHeight: canvas.offsetHeight
+            width: logical.w,
+            height: logical.h,
+            windowWidth: logical.w,
+            windowHeight: logical.h
         });
         const link = document.createElement('a');
         link.download = 'relation-weaver.png';
@@ -1569,6 +1680,12 @@ async function exportImage() {
     } catch (err) {
         alert('导出失败：' + err.message + '\n请检查图片素材是否可访问，或尝试刷新页面后重试。');
     } finally {
+        // 恢复画布响应式尺寸与渲染
+        canvas.style.width = savedCssW;
+        canvas.style.height = savedCssH;
+        if (state.appMode === 'list') renderNames(); else renderTextInstances();
+        renderImages();
+        if (state.appMode === 'list') drawConnections(); else drawTextConnections();
         // 恢复选中元素 outline
         savedOutlines.forEach(({ el, outline, outlineOffset }) => {
             el.style.outline = outline;
@@ -1619,14 +1736,43 @@ function togglePanel() {
     const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
     if (!activePanel) return;
     activePanel.classList.toggle('open');
+    // 打开面板时隐藏引导提示
+    if (activePanel.classList.contains('open')) hideMobileGuide();
+}
+
+// 步骤折叠：点击标题切换展开/收起
+document.addEventListener('click', e => {
+    const head = e.target.closest('.step-head');
+    if (!head) return;
+    const section = head.parentElement;
+    if (!section || !section.classList.contains('step')) return;
+    section.classList.toggle('collapsed');
+});
+
+// 隐藏移动端引导提示（用户开始操作后）
+function hideMobileGuide() {
+    const g = $('mobileGuide');
+    if (g) g.style.display = 'none';
 }
 // 点击移动端面板外部关闭
 document.addEventListener('pointerdown', e => {
     const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
     const toggle = $('panelToggle');
     if (!activePanel || !activePanel.classList.contains('open')) return;
-    if (activePanel.contains(e.target) || toggle.contains(e.target)) return;
+    if (activePanel.contains(e.target) || (toggle && toggle.contains(e.target))) return;
     activePanel.classList.remove('open');
+});
+
+// 窗口尺寸变化时重新适配画布宽度并重渲染（移动端旋转屏幕等场景）
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        applyCanvasCssSize();
+        if (state.appMode === 'list') { renderNames(); drawConnections(); }
+        else { renderTextInstances(); drawTextConnections(); }
+        renderImages();
+    }, 100);
 });
 
 // ============ 文本连线模式 ============
@@ -1704,14 +1850,15 @@ function generateTextConnections() {
 function renderTextInstances() {
     const layer = $('layerText');
     layer.innerHTML = '';
+    const s = getScale();
     state.textInstances.forEach(inst => {
         const el = document.createElement('div');
         const isSelected = state.selected && state.selected.type === 'textInst' && state.selected.id === inst.id;
         el.className = 'name-el' + (inst.vertical ? ' vertical' : '') + (isSelected ? ' selected' : '');
         el.dataset.id = inst.id;
-        el.style.left = inst.x + 'px';
-        el.style.top = inst.y + 'px';
-        el.style.fontSize = inst.fontSize + 'px';
+        el.style.left = (inst.x * s) + 'px';
+        el.style.top = (inst.y * s) + 'px';
+        el.style.fontSize = (inst.fontSize * s) + 'px';
         el.style.color = inst.color;
         el.style.opacity = inst.opacity;
         el.style.zIndex = inst.zIndex;
