@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+<title>Relation Weaver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;700&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: 'Cormorant Garamond', 'Noto Serif SC', 'Times New Roman', 'SimSun', serif;
+        background: #fafafa;
+        color: #222;
+        min-height: 100vh;
+    }
+    header {
+        background: #1a1a1a;
+        color: #fff;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    header h1 { font-size: 20px; font-weight: 600; letter-spacing: 2px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .btn {
+        background: #fff;
+        color: #1a1a1a;
+        border: 1px solid #1a1a1a;
+        padding: 8px 18px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: inherit;
+    }
+    .btn:hover { background: #1a1a1a; color: #fff; }
+    .btn-primary { background: #1a1a1a; color: #fff; }
+    .btn-primary:hover { background: #333; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-danger { color: #c0392b; border-color: #c0392b; }
+    .btn-danger:hover { background: #c0392b; color: #fff; }
+
+    main {
+        display: flex;
+        gap: 16px;
+        padding: 16px;
+        align-items: flex-start;
+    }
+    .panel {
+        width: 320px;
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 16px;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
+    .panel section { margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid #eee; }
+    .panel section:last-child { border-bottom: none; }
+    .panel h3 { font-size: 15px; margin-bottom: 10px; letter-spacing: 1px; }
+    .panel label { font-size: 13px; display: block; margin-bottom: 4px; color: #555; }
+    .panel input[type="text"], .panel textarea, .panel input[type="number"], .panel select {
+        width: 100%;
+        padding: 7px 9px;
+        border: 1px solid #ccc;
+        font-family: inherit;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .panel textarea { resize: vertical; min-height: 70px; }
+    .panel input[type="range"] { width: 100%; }
+    .panel input[type="color"] { width: 40px; height: 30px; padding: 0; border: 1px solid #ccc; cursor: pointer; vertical-align: middle; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .row .btn { flex: 1; }
+
+    .ratio-group { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ratio-group label {
+        flex: 1 1 30%;
+        border: 1px solid #ccc;
+        padding: 6px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 0;
+    }
+    .ratio-group input { display: none; }
+    .ratio-group input:checked + span { font-weight: 700; color: #1a1a1a; }
+    .ratio-group label:has(input:checked) { border-color: #1a1a1a; background: #f0f0f0; }
+
+    .canvas-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow: auto;
+        background: #e9e9ec;
+    }
+    .canvas-outer {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        position: relative;
+        margin: 24px;
+    }
+    #canvas {
+        position: relative;
+        background: #ffffff;
+        overflow: hidden;
+        transform-origin: top left;
+        outline: 1px dashed #b8b8b8;
+        outline-offset: -1px;
+    }
+    .layer { position: absolute; inset: 0; }
+    .layer-bg { z-index: 0; pointer-events: none; }
+    .layer-images-below { z-index: 1; pointer-events: none; }
+    .layer-lines { z-index: 3; pointer-events: none; }
+    .layer-text { z-index: 5; pointer-events: none; }
+    .layer-images-above { z-index: 8; pointer-events: none; }
+
+    .name-el {
+        position: absolute;
+        cursor: pointer;
+        padding: 4px 8px;
+        user-select: none;
+        white-space: nowrap;
+        line-height: 1.2;
+        border: 1px dashed transparent;
+        touch-action: none;
+        pointer-events: auto;
+    }
+    .name-el.vertical {
+        white-space: normal;
+        text-align: center;
+        line-height: 1.1;
+    }
+    .name-el.vertical .vchar {
+        display: block;
+    }
+    .name-el.selected, .img-el.selected { outline: 2px dashed #1a1a1a; outline-offset: 2px; }
+    .img-el {
+        position: absolute;
+        cursor: move;
+        user-select: none;
+        touch-action: none;
+        pointer-events: auto;
+    }
+    .img-el img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        object-fit: contain;
+    }
+    .resize-handle {
+        position: absolute;
+        right: -6px;
+        bottom: -6px;
+        width: 14px;
+        height: 14px;
+        background: #1a1a1a;
+        border: 2px solid #fff;
+        cursor: nwse-resize;
+        z-index: 20;
+        pointer-events: auto;
+    }
+    .layer-tag {
+        position: absolute;
+        top: -22px;
+        left: 0;
+        font-size: 11px;
+        background: #1a1a1a;
+        color: #fff;
+        padding: 1px 6px;
+        display: none;
+    }
+    .selected .layer-tag { display: block; }
+
+    .toolbar {
+        position: fixed;
+        background: #1a1a1a;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 1000;
+        display: none;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        max-width: 92vw;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .toolbar input[type="color"] { width: 28px; height: 28px; padding: 0; cursor: pointer; }
+    .toolbar input[type="number"] { width: 50px; padding: 3px; }
+    .toolbar button {
+        background: #fff; color: #1a1a1a; border: none;
+        padding: 4px 8px; cursor: pointer; font-size: 12px;
+    }
+    .toolbar button:hover { background: #eee; }
+
+    .empty-hint {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        color: #bbb;
+        font-size: 16px;
+        pointer-events: none;
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        main { flex-direction: column; }
+        .panel { width: 100%; max-height: none; }
+    }
+
+    /* ============ 移动端适配 ============ */
+    .panel-toggle {
+        display: none;
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        z-index: 999;
+        background: #1a1a1a;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+    .mobile-export-btn {
+        display: none;
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        z-index: 999;
+        background: #1a1a1a;
+        color: #fff;
+        border: none;
+        border-radius: 24px;
+        padding: 0 20px;
+        height: 48px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        font-family: inherit;
+    }
+    @media (max-width: 768px) {
+        header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+        header h1 { font-size: 20px; }
+        .mode-switch { width: 100%; }
+        .mode-btn { flex: 1; padding: 10px !important; font-size: 13px !important; }
+        .header-actions { width: 100%; justify-content: space-between; }
+        .panel {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%;
+            max-width: none;
+            height: 100vh;
+            max-height: none;
+            z-index: 900;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        .panel.open { transform: translateX(0); }
+        .panel-toggle { display: flex; align-items: center; justify-content: center; }
+        .mobile-export-btn { display: block; }
+        .canvas-wrap { padding: 8px; }
+        /* 工具栏在移动端改为底部全屏抽屉 */
+        .toolbar {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            top: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            border-radius: 12px 12px 0 0;
+            padding: 14px 16px;
+            font-size: 14px;
+            z-index: 950;
+            max-height: 50vh;
+            overflow-y: auto;
+        }
+        .toolbar input[type="color"] { width: 44px; height: 44px; }
+        .toolbar input[type="number"] { width: 70px; height: 38px; font-size: 16px; }
+        .toolbar input[type="range"] { width: 100px; height: 44px; }
+        .toolbar select { height: 38px; font-size: 14px; }
+        .toolbar button {
+            padding: 10px 14px;
+            font-size: 14px;
+            min-height: 44px;
+            min-width: 44px;
+        }
+        /* 所有按钮最小 44px 触摸区域 */
+        button, .btn {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .btn-sm { min-height: 40px; padding: 8px 14px; }
+        input[type="text"], textarea, select {
+            min-height: 44px;
+            font-size: 16px;
+        }
+        textarea { min-height: 60px; }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Relation Weaver</h1>
+    <div class="mode-switch" style="display:flex;gap:0;border:1px solid #555;border-radius:4px;overflow:hidden;">
+        <button class="mode-btn active" id="modeList" onclick="setAppMode('list')" style="background:#fff;color:#1a1a1a;border:none;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:13px;">名单排版模式</button>
+        <button class="mode-btn" id="modeText" onclick="setAppMode('text')" style="background:transparent;color:#fff;border:none;padding:8px 16px;cursor:pointer;font-family:inherit;font-size:13px;border-left:1px solid #555;">文本连线模式</button>
+    </div>
+    <div class="header-actions">
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;">
+            背景
+            <input type="color" id="bgColor" value="#ffffff" title="背景颜色">
+        </label>
+        <button class="btn btn-primary" onclick="exportImage()">导出图片</button>
+    </div>
+</header>
+
+<main>
+    <aside class="panel" id="panelList">
+        <section>
+            <h3>① 画幅比例</h3>
+            <div class="ratio-group" id="ratioGroup">
+                <label><input type="radio" name="ratio" value="1:1" checked><span>1:1</span></label>
+                <label><input type="radio" name="ratio" value="16:9"><span>16:9</span></label>
+                <label><input type="radio" name="ratio" value="9:16"><span>9:16</span></label>
+                <label><input type="radio" name="ratio" value="4:3"><span>4:3</span></label>
+                <label><input type="radio" name="ratio" value="3:4"><span>3:4</span></label>
+            </div>
+        </section>
+
+        <section>
+            <h3>② 导入名字名单</h3>
+            <label>每行一个名字</label>
+            <textarea id="nameInput" placeholder="A&#10;B&#10;C&#10;D"></textarea>
+            <div class="row">
+                <button class="btn btn-sm" onclick="importNames()">导入名字</button>
+                <button class="btn btn-sm" onclick="clearNames()">清空名字</button>
+            </div>
+        </section>
+
+        <section>
+            <h3>③ 名字排版</h3>
+            <label>排版模式</label>
+            <div class="row" style="margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                    <input type="radio" name="layoutMode" value="random" checked onchange="setLayoutMode(this.value)"> 随机模式
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                    <input type="radio" name="layoutMode" value="layered" onchange="setLayoutMode(this.value)"> 分层模式
+                </label>
+            </div>
+            <div class="row" style="margin-bottom:8px;">
+                <button class="btn btn-sm btn-primary" onclick="randomLayout()">随机排版</button>
+                <button class="btn btn-sm" onclick="randomAssignLayers()" id="btnAssignLayers" style="display:none;">随机分配层级</button>
+            </div>
+            <div class="row" style="margin-bottom:8px;">
+                <button class="btn btn-sm" onclick="toggleAllOrientation()">横排 / 纵排 切换</button>
+            </div>
+            <label>统一字号 (px)</label>
+            <input type="range" id="globalFontSize" min="12" max="80" value="28" oninput="applyGlobalFont(this.value)">
+            <label>统一颜色</label>
+            <div class="row" style="margin-bottom:8px;">
+                <input type="color" id="globalColor" value="#222222">
+                <button class="btn btn-sm" onclick="applyGlobalColor()">应用到全部</button>
+            </div>
+            <p style="font-size:11px;color:#888;">提示：点击画布上的名字可单独调整字号、颜色、透明度、层级和方向。</p>
+        </section>
+
+        <section>
+            <h3>④ 连线配对</h3>
+            <label>每行一对，格式：名字A × 名字B</label>
+            <textarea id="connInput" placeholder="A × B&#10;C × D"></textarea>
+            <div class="row" style="margin-bottom:8px;">
+                <button class="btn btn-sm" onclick="importConnections()">导入连线</button>
+                <button class="btn btn-sm" onclick="clearConnections()">清空连线</button>
+            </div>
+            <label>线宽：<span id="lineWidthVal">2</span> px</label>
+            <input type="range" id="lineWidth" min="1" max="10" value="2" oninput="document.getElementById('lineWidthVal').textContent=this.value; drawConnections()">
+            <label>透明度：<span id="lineOpacityVal">100</span>%</label>
+            <input type="range" id="lineOpacity" min="10" max="100" value="100" oninput="document.getElementById('lineOpacityVal').textContent=this.value; drawConnections()">
+        </section>
+
+        <section>
+            <h3>⑤ PNG 素材</h3>
+            <input type="file" id="imgUpload" accept="image/png,image/jpeg,image/webp" multiple style="display:none">
+            <div class="row">
+                <button class="btn btn-sm" onclick="document.getElementById('imgUpload').click()">上传 PNG</button>
+            </div>
+            <p style="font-size:11px;color:#888;margin-top:6px;">点击素材可拖动，右下角拖点可缩放。可设置在文字上方或下方。</p>
+        </section>
+    </aside>
+
+    <!-- 文本连线模式面板 -->
+    <aside class="panel" id="panelText" style="display:none;">
+        <section>
+            <h3>文本连线模式</h3>
+            <p style="font-size:12px;color:#666;margin-bottom:8px;">粘贴任意文本，输入配对名单，将文本中所有出现的配对名字用红线两两相连。</p>
+        </section>
+        <section>
+            <h3>① 粘贴文本</h3>
+            <textarea id="textInput" style="min-height:160px;" placeholder="A B C A B"></textarea>
+        </section>
+        <section>
+            <h3>② 配对名单</h3>
+            <label>每行一对，格式：名字A × 名字B</label>
+            <textarea id="textConnInput" placeholder="A × B&#10;C × D"></textarea>
+            <div class="row" style="margin-bottom:8px;">
+                <button class="btn btn-sm btn-primary" onclick="generateTextConnections()">生成连线</button>
+                <button class="btn btn-sm" onclick="clearTextConnections()">清空</button>
+            </div>
+        </section>
+        <section>
+            <h3>③ 样式</h3>
+            <label>排版模式</label>
+            <div class="row" style="margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                    <input type="radio" name="textLayoutMode" value="random" checked> 随机
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:13px;margin:0;">
+                    <input type="radio" name="textLayoutMode" value="layered"> 分层
+                </label>
+            </div>
+            <label>线宽：<span id="textLineWidthVal">2</span> px</label>
+            <input type="range" id="textLineWidth" min="1" max="10" value="2" oninput="document.getElementById('textLineWidthVal').textContent=this.value; drawTextConnections()">
+            <label>全局透明度：<span id="textLineOpacityVal">100</span>%</label>
+            <input type="range" id="textLineOpacity" min="10" max="100" value="100" oninput="document.getElementById('textLineOpacityVal').textContent=this.value; drawTextConnections()">
+            <p style="font-size:11px;color:#888;margin-top:6px;">线透明度自动取两端名字透明度的平均值。每对最多绘制 200 条线。</p>
+        </section>
+    </aside>
+
+    <div class="canvas-wrap">
+        <div class="canvas-outer" id="canvasOuter">
+            <div id="canvas">
+                <div class="layer layer-bg" id="layerBg"></div>
+                <div class="layer layer-images-below" id="layerImagesBelow"></div>
+                <svg class="layer layer-lines" id="layerLines" xmlns="http://www.w3.org/2000/svg"></svg>
+                <div class="layer layer-text" id="layerText"></div>
+                <div class="layer layer-images-above" id="layerImagesAbove"></div>
+                <div class="empty-hint" id="emptyHint">导入名字 / 素材，开始排版</div>
+            </div>
+        </div>
+        <div class="canvas-actions" style="margin-top:16px;display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-primary" onclick="exportImage()" style="padding:10px 28px;font-size:15px;">导出图片</button>
+            <span style="font-size:12px;color:#888;">导出画幅区域内容，分辨率为画幅尺寸的 2 倍（PNG 格式）</span>
+        </div>
+    </div>
+</main>
+
+<footer style="text-align:center;padding:14px;color:#999;font-size:12px;letter-spacing:1px;">
+    本工具灵感来源于Beetroot Design Group 的 Romeo and Juliet Poster项目
+</footer>
+
+<!-- 选中元素的浮动工具栏 -->
+<div class="toolbar" id="toolbar">
+    <label style="display:flex;align-items:center;gap:4px;">字号
+        <input type="number" id="tbFontSize" min="8" max="120" value="28">
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;">颜色
+        <input type="color" id="tbColor" value="#222222">
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;" id="tbOpacityWrap">透明
+        <input type="range" id="tbOpacity" min="10" max="100" value="100" style="width:60px;">
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;" id="tbLayerWrap">层级
+        <select id="tbLayer" style="padding:2px;font-size:12px;">
+            <option value="1">第1层</option>
+            <option value="2">第2层</option>
+            <option value="3">第3层</option>
+            <option value="4">第4层</option>
+        </select>
+    </label>
+    <button id="tbOrient" onclick="toggleSelectedOrientation()">纵排</button>
+    <button onclick="bringToFront()">置顶</button>
+    <button onclick="sendToBack()">置底</button>
+    <button id="tbImgLayer" onclick="toggleImgLayer()">切换层级</button>
+    <button class="btn-danger" style="background:#c0392b;color:#fff;" onclick="deleteSelected()">删除</button>
+    <button onclick="deselect()" title="关闭">✕</button>
+</div>
+
+<!-- 移动端：面板切换按钮 + 固定导出按钮 -->
+<button class="panel-toggle" id="panelToggle" onclick="togglePanel()" aria-label="打开操作面板">☰</button>
+<button class="mobile-export-btn" onclick="exportImage()">导出图片</button>
+
+<script>
+// ============ 状态 ============
+const state = {
+    ratio: '1:1',
+    bgColor: '#ffffff',
+    layoutMode: 'random', // 'random' | 'layered'
+    names: [],        // {id, text, x, y, fontSize, color, opacity, vertical, layer, zIndex}
+    connections: [],  // {aText, bText}
+    images: [],       // {id, src, x, y, w, h, aboveText}
+    selected: null,   // {type:'name'|'image', id}
+    nameSeq: 1,
+    imgSeq: 1,
+    zCounter: 10,
+    appMode: 'list',  // 'list' | 'text'
+    textPairs: [],    // {aText, bText}
+    textInstances: [] // {id, text, x, y, fontSize, color, opacity, layer, pairKey, side}
+};
+
+const CANVAS_W = 800; // 画布逻辑宽度（固定，用于坐标计算）
+
+// ============ 画布尺寸 ============
+function ratioToSize(ratio) {
+    const [w, h] = ratio.split(':').map(Number);
+    const scale = CANVAS_W / w;
+    return { w: CANVAS_W, h: Math.round(h * scale) };
+}
+
+function setCanvasSize(customW, customH) {
+    const base = ratioToSize(state.ratio);
+    const w = customW || base.w;
+    const h = customH || base.h;
+    const canvas = document.getElementById('canvas');
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    const svg = document.getElementById('layerLines');
+    svg.setAttribute('width', w);
+    svg.setAttribute('height', h);
+    drawConnections();
+    updateEmptyHint();
+    scaleCanvasForMobile();
+}
+
+// 移动端画布自适应：按容器宽度等比缩放
+function scaleCanvasForMobile() {
+    const outer = $('canvasOuter');
+    const canvas = $('canvas');
+    if (!outer || !canvas) return;
+    // 清除之前的缩放
+    outer.style.transform = '';
+    outer.style.width = '';
+    outer.style.height = '';
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    if (cw === 0) return;
+    // 可用宽度：视口宽度减去边距
+    const available = window.innerWidth - 32;
+    if (cw <= available) {
+        // 桌面端或足够宽，不缩放
+        return;
+    }
+    const scale = available / cw;
+    outer.style.transformOrigin = 'top left';
+    outer.style.transform = `scale(${scale})`;
+    outer.style.width = cw + 'px';
+    outer.style.height = ch + 'px';
+    // 让外层容器占据缩放后的实际高度，避免布局塌陷
+    outer.style.marginBottom = (ch * scale - ch) + 'px';
+}
+
+function setRatio(r) {
+    state.ratio = r;
+    setCanvasSize();
+    // 画幅比例变化后，可用空间完全改变，必须重新排版
+    autoRelayout();
+}
+
+// 根据当前模式和数据自动重新排版（画幅切换/横竖切换时调用）
+function autoRelayout() {
+    if (state.appMode === 'list') {
+        if (state.names.length === 0) return;
+        // 名单模式：沿用当前排版模式重新排版
+        if (state.layoutMode === 'layered') {
+            applyLayerStyles();
+        } else {
+            randomLayout();
+        }
+    } else {
+        // 文本模式：重新生成实例与连线
+        if (state.textInstances.length === 0) return;
+        generateTextConnections();
+    }
+}
+
+// ============ 工具 ============
+function $(id) { return document.getElementById(id); }
+function getCanvasScale() {
+    const canvas = $('canvas');
+    const rect = canvas.getBoundingClientRect();
+    return { sx: canvas.offsetWidth / rect.width, sy: canvas.offsetHeight / rect.height };
+}
+function clientToCanvas(clientX, clientY) {
+    const canvas = $('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const { sx, sy } = getCanvasScale();
+    return {
+        x: (clientX - rect.left) * sx,
+        y: (clientY - rect.top) * sy
+    };
+}
+function updateEmptyHint() {
+    const hint = $('emptyHint');
+    const hasText = state.appMode === 'text' ? state.textInstances.length > 0 : state.names.length > 0;
+    hint.style.display = (!hasText && state.images.length === 0) ? 'block' : 'none';
+}
+
+// ============ 名字 ============
+function importNames() {
+    const raw = $('nameInput').value.trim();
+    if (!raw) return;
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    // 清除旧名字
+    state.names = [];
+    // 自动排版成网格
+    const { w, h } = ratioToSize(state.ratio);
+    const cols = Math.ceil(Math.sqrt(lines.length * (w / h)));
+    const cellW = w / (cols + 1);
+    const cellH = 60;
+    lines.forEach((text, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        state.names.push({
+            id: 'n' + (state.nameSeq++),
+            text,
+            x: cellW * (col + 0.5),
+            y: cellH * (row + 1) + 20,
+            fontSize: parseInt($('globalFontSize').value) || 28,
+            color: $('globalColor').value,
+            opacity: 1,
+            vertical: false,
+            layer: 3,
+            zIndex: ++state.zCounter
+        });
+    });
+    renderNames();
+    drawConnections();
+    updateEmptyHint();
+}
+
+function clearNames() {
+    state.names = [];
+    renderNames();
+    drawConnections();
+    updateEmptyHint();
+}
+
+function renderNames() {
+    const layer = $('layerText');
+    layer.innerHTML = '';
+    state.names.forEach(n => {
+        const el = document.createElement('div');
+        el.className = 'name-el' + (n.vertical ? ' vertical' : '') + (state.selected && state.selected.type === 'name' && state.selected.id === n.id ? ' selected' : '');
+        el.dataset.id = n.id;
+        el.style.left = n.x + 'px';
+        el.style.top = n.y + 'px';
+        el.style.fontSize = n.fontSize + 'px';
+        el.style.color = n.color;
+        el.style.opacity = n.opacity;
+        el.style.zIndex = n.zIndex;
+        if (n.vertical) {
+            // 竖排：逐字包裹 span，避免 writing-mode 导致 html2canvas 渲染异常
+            el.innerHTML = n.text.split('').map(c => `<span class="vchar">${c}</span>`).join('');
+        } else {
+            el.textContent = n.text;
+        }
+        el.addEventListener('pointerdown', e => startDrag(e, 'name', n.id));
+        layer.appendChild(el);
+    });
+}
+
+function applyGlobalFont(v) {
+    state.names.forEach(n => n.fontSize = parseInt(v));
+    renderNames();
+    drawConnections();
+}
+
+function applyGlobalColor() {
+    const c = $('globalColor').value;
+    state.names.forEach(n => n.color = c);
+    renderNames();
+}
+
+function toggleAllOrientation() {
+    const anyVertical = state.names.some(n => n.vertical);
+    state.names.forEach(n => n.vertical = !anyVertical);
+    // 横竖排列变化后重新排版，确保新方向下不重叠不越界
+    autoRelayout();
+}
+
+// ============ 排版模式切换 ============
+function setLayoutMode(mode) {
+    state.layoutMode = mode;
+    $('btnAssignLayers').style.display = mode === 'layered' ? '' : 'none';
+    // 切换排版模式后自动重新排版
+    if (state.appMode === 'list' && state.names.length > 0) {
+        autoRelayout();
+    }
+}
+
+// 分层模式的层级配置
+const LAYER_CONFIG = {
+    1: { label: '第1层（底层）', fontSize: [12, 18], opacity: [0.3, 0.5], colors: ['#aaaaaa', '#999999', '#bbbbbb'] },
+    2: { label: '第2层',       fontSize: [20, 28], opacity: [0.5, 0.7], colors: ['#666666', '#777777', '#555555'] },
+    3: { label: '第3层',       fontSize: [30, 38], opacity: [0.7, 0.9], colors: ['#333333', '#444444', '#2a2a2a'] },
+    4: { label: '第4层（顶层）', fontSize: [40, 52], opacity: [0.9, 1.0], colors: ['#111111', '#000000', '#8b1a1a'] }
+};
+
+// 随机模式的随机范围
+const RANDOM_CONFIG = {
+    fontSize: [12, 48],
+    opacity: [0.3, 1.0],
+    colors: ['#111111', '#333333', '#666666', '#8b1a1a', '#444444', '#222222']
+};
+
+function rand(min, max) {
+    return min + Math.random() * (max - min);
+}
+function randInt(min, max) {
+    return Math.floor(rand(min, max + 1));
+}
+function pick(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// 估算名字占用的矩形尺寸（用于碰撞检测）
+function measureName(name) {
+    // 粗略估算：中文字符约等于字号，英文约 0.6 倍
+    const charCount = name.text.length;
+    const isCjk = /[\u4e00-\u9fff\u3040-\u30ff]/.test(name.text);
+    const letterSpacing = 1; // 与渲染时的 letter-spacing 一致
+    const charW = isCjk ? name.fontSize : name.fontSize * 0.6;
+    const padding = 24; // padding 8px*2 + 粗体/亚像素渲染安全余量
+    if (name.vertical) {
+        return { w: name.fontSize + padding, h: charCount * (charW + letterSpacing) + padding };
+    }
+    return { w: charCount * (charW + letterSpacing) + padding, h: name.fontSize * 1.4 + padding };
+}
+
+// 碰撞检测：矩形是否重叠
+function rectsOverlap(a, b) {
+    return !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+}
+
+// 检查候选位置是否与已放置名字重叠
+function collides(candidateRect, placedRects) {
+    return placedRects.some(r => rectsOverlap(candidateRect, r));
+}
+
+// 碰撞矩形额外边距：避免名字视觉上贴太近
+const COLLISION_MARGIN = 4;
+
+// 统一碰撞放置函数（名单模式 & 文本模式共用）
+// item 需包含 {text, fontSize, vertical, opacity}；会写入 item.x / item.y / fontSize
+// 策略：500 次随机尝试 → 失败则字号缩小 10%（最低 minFontSize）→ 仍失败返回 false
+// 返回 true 表示成功无重叠放置，false 表示缩到最小仍放不下
+// 手动调整过的名字（manuallyAdjusted）不缩小字号，放不下则返回 false 触发画布放大
+function placeWithCollision(item, placedRects, cw, ch, minFontSize) {
+    if (item.vertical === undefined) item.vertical = false;
+    minFontSize = minFontSize || 4;
+    const isManual = !!item.manuallyAdjusted;
+
+    const paddedRect = (x, y, s) => ({
+        x: x - COLLISION_MARGIN,
+        y: y - COLLISION_MARGIN,
+        w: s.w + COLLISION_MARGIN * 2,
+        h: s.h + COLLISION_MARGIN * 2
+    });
+
+    let size = measureName(item);
+
+    while (true) {
+        // 若名字本身尺寸超过画幅
+        if (size.w > cw || size.h > ch) {
+            if (isManual) return false; // 手动调整的不缩小，交给画布放大处理
+            // 非手动：持续缩小直到能容纳
+            while ((size.w > cw || size.h > ch) && item.fontSize > minFontSize) {
+                item.fontSize = Math.max(minFontSize, Math.floor(item.fontSize * 0.9));
+                size = measureName(item);
+            }
+            if (size.w > cw || size.h > ch) return false;
+        }
+
+        // 500 次随机尝试，位置必须在画幅内
+        for (let attempt = 0; attempt < 500; attempt++) {
+            const x = rand(0, Math.max(0, cw - size.w));
+            const y = rand(0, Math.max(0, ch - size.h));
+            if (!collides(paddedRect(x, y, size), placedRects)) {
+                item.x = x;
+                item.y = y;
+                placedRects.push(paddedRect(x, y, size));
+                return true;
+            }
+        }
+
+        if (isManual) return false; // 手动调整的不缩小字号
+
+        // 缩小字号 10% 重试
+        const shrunk = Math.max(minFontSize, Math.floor(item.fontSize * 0.9));
+        if (shrunk >= item.fontSize) return false;
+        item.fontSize = shrunk;
+        size = measureName(item);
+    }
+}
+
+// 计算动态字号范围：根据名字数量、字符数与画幅面积
+// 名字面积 ≈ 字符数 × 字号 × (1.4 × 字号) = 1.4 × 字符数 × 字号²
+// 取排版效率 0.5，反解基础字号 = √(S × 效率 / (1.4 × 平均字符数))
+// 范围 = 基础字号 × 0.5 到 × 1.5；降级下限 = 基础字号 × 0.4
+function getDynamicFontRange(items, cw, ch) {
+    const N = Math.max(1, items.length);
+    const S = (cw * ch) / N;
+    let totalChars = 0;
+    items.forEach(it => { totalChars += (it.text || '').length; });
+    const avgChars = Math.max(1, totalChars / N);
+    const efficiency = 0.5;
+    const base = Math.sqrt(S * efficiency / (1.4 * avgChars));
+    const min = Math.max(4, Math.round(base * 0.5));
+    const max = Math.max(min + 1, Math.round(base * 1.5));
+    return { base, min, max, minFloor: Math.max(4, Math.round(base * 0.4)) };
+}
+
+// 为名字分配字号/透明度/颜色（字号在动态范围内）
+// 手动调整过的名字（manuallyAdjusted）保留其样式，仅参与位置排版
+function assignNameStyle(item, range, mode) {
+    if (item.manuallyAdjusted) {
+        // 保留用户手动设置的字号、颜色、透明度、层级、方向
+        if (!item.layer) item.layer = 4;
+        return;
+    }
+    let fsMin, fsMax;
+    if (mode === 'layered') {
+        const span = range.max - range.min;
+        const layerSpans = [[0, 0.2], [0.2, 0.45], [0.45, 0.75], [0.75, 1.0]];
+        const ls = layerSpans[(item.layer || 3) - 1] || layerSpans[2];
+        fsMin = Math.round(range.min + span * ls[0]);
+        fsMax = Math.round(range.min + span * ls[1]);
+        item.color = pick((LAYER_CONFIG[item.layer] || LAYER_CONFIG[3]).colors);
+    } else {
+        fsMin = range.min;
+        fsMax = range.max;
+        item.color = pick(RANDOM_CONFIG.colors);
+    }
+    item.fontSize = randInt(fsMin, fsMax);
+    item.opacity = +rand(0.3, 1.0).toFixed(2);
+    if (!item.layer) item.layer = 4;
+}
+
+// 统一排版核心：尝试在画幅内无重叠放置所有元素
+// 若有元素放不下，等比放大画布后重试（最多 12 次）
+// 关键：字号范围只基于原始画幅计算一次，放大画布时字号不变，确保放大真正增加可用空间
+function runLayout(items, baseW, baseH, mode) {
+    // 字号范围基于原始画幅计算，画布放大时不再改变
+    const range = getDynamicFontRange(items, baseW, baseH);
+    let cw = baseW, ch = baseH;
+    for (let attempt = 0; attempt < 12; attempt++) {
+        const placedRects = [];
+        // 每次尝试前清除旧坐标，避免使用上一次（不同画布尺寸）的陈旧位置
+        items.forEach(it => { it.x = undefined; it.y = undefined; });
+        items.forEach(it => assignNameStyle(it, range, mode));
+        // 按字号从大到小放置（大的先占位置，小的灵活填空）
+        const sorted = [...items].sort((a, b) => b.fontSize - a.fontSize);
+        let allPlaced = true;
+        for (const it of sorted) {
+            const ok = placeWithCollision(it, placedRects, cw, ch, range.minFloor);
+            if (!ok) { allPlaced = false; break; }
+        }
+        if (allPlaced) {
+            return { cw, ch, range, success: true };
+        }
+        // 放大画布 15% 重试（字号不变，放大画布 = 增加相对可用空间）
+        cw = Math.round(cw * 1.15);
+        ch = Math.round(ch * 1.15);
+    }
+    // 兜底：最后一次尝试后仍有未放置的，在画幅内随机放置（可能重叠）
+    items.forEach(it => {
+        if (it.x === undefined || it.y === undefined) {
+            const s = measureName(it);
+            it.x = rand(0, Math.max(0, cw - s.w));
+            it.y = rand(0, Math.max(0, ch - s.h));
+        }
+    });
+    return { cw, ch, range, success: false };
+}
+
+// ============ 随机排版（方案一） ============
+function randomLayout() {
+    if (state.names.length === 0) {
+        alert('请先导入名字');
+        return;
+    }
+    // 分层模式下：按已分配的层级重新排版（若未分配则先随机分配）
+    if (state.layoutMode === 'layered') {
+        if (!state.names.some(n => n.layer)) {
+            state.names.forEach(n => { n.layer = randInt(1, 4); });
+        }
+        applyLayerStyles();
+        return;
+    }
+    const base = ratioToSize(state.ratio);
+    // 基于原始画幅判断字号是否过小（放大画布后字号会变大，不能用最终结果判断）
+    const baseRange = getDynamicFontRange(state.names, base.w, base.h);
+    if (baseRange.base < 8) {
+        alert('名字过多，动态字号偏小，建议减少数量或更换更大画幅。');
+    }
+    const res = runLayout(state.names, base.w, base.h, 'random');
+    setCanvasSize(res.cw, res.ch);
+    state.names.forEach(n => { n.zIndex = ++state.zCounter; });
+    renderNames();
+    drawConnections();
+}
+
+// ============ 分层模式（方案二） ============
+function randomAssignLayers() {
+    if (state.names.length === 0) {
+        alert('请先导入名字');
+        return;
+    }
+    // 随机分配层级（1-4）
+    state.names.forEach(n => {
+        n.layer = randInt(1, 4);
+    });
+    applyLayerStyles();
+}
+
+// 根据层级应用字号/透明度/颜色，并随机排版（所有层级共用同一套碰撞检测）
+function applyLayerStyles() {
+    const base = ratioToSize(state.ratio);
+    const baseRange = getDynamicFontRange(state.names, base.w, base.h);
+    if (baseRange.base < 8) {
+        alert('名字过多，动态字号偏小，建议减少数量或更换更大画幅。');
+    }
+    const res = runLayout(state.names, base.w, base.h, 'layered');
+    setCanvasSize(res.cw, res.ch);
+    state.names.forEach(n => {
+        n.zIndex = (n.layer || 3) * 100 + Math.floor(Math.random() * 50);
+    });
+    renderNames();
+    drawConnections();
+}
+
+// 单个名字设置层级（从浮动工具栏调用）
+function setSelectedLayer(layer) {
+    const n = getSelectedTextItem();
+    if (!n) return;
+    n.layer = layer;
+    n.manuallyAdjusted = true;
+    // 基于当前画布尺寸计算动态字号范围，层级字号在动态范围内取对应区间
+    const canvas = $('canvas');
+    const items = state.appMode === 'text' ? state.textInstances : state.names;
+    const range = getDynamicFontRange(items, canvas.offsetWidth, canvas.offsetHeight);
+    const span = range.max - range.min;
+    const layerSpans = [[0, 0.2], [0.2, 0.45], [0.45, 0.75], [0.75, 1.0]];
+    const ls = layerSpans[layer - 1] || layerSpans[2];
+    n.fontSize = randInt(Math.round(range.min + span * ls[0]), Math.round(range.min + span * ls[1]));
+    n.opacity = +rand(0.3, 1.0).toFixed(2);
+    n.color = pick(LAYER_CONFIG[layer].colors);
+    n.zIndex = layer * 100 + Math.floor(Math.random() * 50);
+    if (state.appMode === 'list') renderNames(); else renderTextInstances();
+    redrawTextConnections();
+    showToolbar();
+}
+
+// ============ 连线 ============
+function importConnections() {
+    const raw = $('connInput').value.trim();
+    if (!raw) return;
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    state.connections = [];
+    lines.forEach(line => {
+        // 支持 × x X * 多种分隔符
+        const parts = line.split(/\s*[×xX＊\*]\s*/).map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+            state.connections.push({ aText: parts[0], bText: parts[1] });
+        }
+    });
+    drawConnections();
+}
+
+function clearConnections() {
+    state.connections = [];
+    drawConnections();
+}
+
+function getElementCenter(type, id) {
+    if (type === 'name') {
+        const el = document.querySelector(`.name-el[data-id="${id}"]`);
+        if (!el) return null;
+        return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
+    }
+    return null;
+}
+
+function findNameByText(text) {
+    return state.names.find(n => n.text === text);
+}
+
+function drawConnections() {
+    const svg = $('layerLines');
+    svg.innerHTML = '';
+    const baseWidth = parseInt($('lineWidth').value) || 2;
+    const globalOpacity = (parseInt($('lineOpacity').value) || 100) / 100;
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
+
+    state.connections.forEach(conn => {
+        const a = findNameByText(conn.aText);
+        const b = findNameByText(conn.bText);
+        if (!a || !b) return;
+        const ca = getElementCenter('name', a.id);
+        const cb = getElementCenter('name', b.id);
+        if (!ca || !cb) return;
+        // 线透明度 = 两个名字透明度的平均值，再受全局透明度约束
+        const nameOpacity = (a.opacity + b.opacity) / 2;
+        const lineOpacity = Math.max(0, Math.min(1, nameOpacity * globalOpacity));
+        // 线宽随透明度缩放：透明度越高线越粗（0.5x — 1x）
+        const lineWidth = baseWidth * (0.5 + 0.5 * nameOpacity);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', ca.x);
+        line.setAttribute('y1', ca.y);
+        line.setAttribute('x2', cb.x);
+        line.setAttribute('y2', cb.y);
+        line.setAttribute('stroke', '#e63946');
+        line.setAttribute('stroke-width', lineWidth);
+        line.setAttribute('stroke-opacity', lineOpacity);
+        line.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(line);
+    });
+}
+
+// ============ 素材 ============
+$('imgUpload').addEventListener('change', e => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const img = new Image();
+            img.onload = () => {
+                const maxDim = 300;
+                let w = img.width, h = img.height;
+                if (w > maxDim || h > maxDim) {
+                    const r = Math.min(maxDim / w, maxDim / h);
+                    w = Math.round(w * r);
+                    h = Math.round(h * r);
+                }
+                const canvas = $('canvas');
+                const cw = canvas.offsetWidth;
+                const ch = canvas.offsetHeight;
+                // 限制图片最大尺寸不超过画幅
+                const fitScale = Math.min(1, cw / w, ch / h);
+                w = Math.round(w * fitScale);
+                h = Math.round(h * fitScale);
+                const px = Math.min(40 + Math.random() * 100, Math.max(0, cw - w));
+                const py = Math.min(40 + Math.random() * 100, Math.max(0, ch - h));
+                state.images.push({
+                    id: 'img' + (state.imgSeq++),
+                    src: ev.target.result,
+                    x: px,
+                    y: py,
+                    w, h,
+                    aboveText: false
+                });
+                renderImages();
+                updateEmptyHint();
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+});
+
+function renderImages() {
+    const below = $('layerImagesBelow');
+    const above = $('layerImagesAbove');
+    below.innerHTML = '';
+    above.innerHTML = '';
+    state.images.forEach(img => {
+        const el = document.createElement('div');
+        el.className = 'img-el' + (state.selected && state.selected.type === 'image' && state.selected.id === img.id ? ' selected' : '');
+        el.dataset.id = img.id;
+        el.style.left = img.x + 'px';
+        el.style.top = img.y + 'px';
+        el.style.width = img.w + 'px';
+        el.style.height = img.h + 'px';
+        el.innerHTML = `<img src="${img.src}" alt=""><div class="layer-tag">${img.aboveText ? '文字上方' : '文字下方'}</div><div class="resize-handle"></div>`;
+        el.addEventListener('pointerdown', e => {
+            if (e.target.classList.contains('resize-handle')) {
+                startResize(e, img.id);
+            } else {
+                startDrag(e, 'image', img.id);
+            }
+        });
+        if (img.aboveText) above.appendChild(el);
+        else below.appendChild(el);
+    });
+}
+
+// ============ 拖拽 ============
+let dragState = null;
+function getItemByType(type, id) {
+    if (type === 'name') return state.names.find(n => n.id === id);
+    if (type === 'image') return state.images.find(i => i.id === id);
+    if (type === 'textInst') return state.textInstances.find(i => i.id === id);
+    return null;
+}
+function startDrag(e, type, id) {
+    console.log('[Relation Weaver] startDrag', type, id);
+    e.preventDefault();
+    // 立即选中并弹出调整面板（点击即生效）
+    selectElement(type, id);
+    const { x, y } = clientToCanvas(e.clientX, e.clientY);
+    const item = getItemByType(type, id);
+    if (!item) return;
+    dragState = {
+        type, id,
+        startX: x, startY: y,
+        origX: item.x, origY: item.y,
+        moved: false
+    };
+    document.addEventListener('pointermove', onDrag);
+    document.addEventListener('pointerup', endDrag);
+}
+
+function onDrag(e) {
+    if (!dragState) return;
+    const { x, y } = clientToCanvas(e.clientX, e.clientY);
+    const dx = x - dragState.startX;
+    const dy = y - dragState.startY;
+    // 移动超过 5px 才视为拖拽，避免误把点击当拖拽
+    if (!dragState.moved && Math.hypot(dx, dy) > 5) {
+        dragState.moved = true;
+    }
+    if (!dragState.moved) return;
+    let nx = dragState.origX + dx;
+    let ny = dragState.origY + dy;
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    const item = getItemByType(dragState.type, dragState.id);
+    if (!item) return;
+    // 使用元素实际渲染尺寸做边界钳制，确保完全在画幅内
+    let ew, eh;
+    if (dragState.type === 'image') {
+        ew = item.w;
+        eh = item.h;
+    } else {
+        const el = document.querySelector(`.name-el[data-id="${dragState.id}"]`);
+        ew = el ? el.offsetWidth : 0;
+        eh = el ? el.offsetHeight : 0;
+    }
+    const maxX = Math.max(0, cw - ew);
+    const maxY = Math.max(0, ch - eh);
+    nx = Math.max(0, Math.min(maxX, nx));
+    ny = Math.max(0, Math.min(maxY, ny));
+    item.x = nx;
+    item.y = ny;
+    if (dragState.type === 'image') {
+        const el = document.querySelector(`.img-el[data-id="${dragState.id}"]`);
+        if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+    } else {
+        const el = document.querySelector(`.name-el[data-id="${dragState.id}"]`);
+        if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
+        if (dragState.type === 'textInst') drawTextConnections();
+        else drawConnections();
+    }
+}
+
+function endDrag() {
+    // 仅在真正发生拖拽时标记为手动调整（点击不标记）
+    if (dragState && dragState.moved && (dragState.type === 'name' || dragState.type === 'textInst')) {
+        const item = getItemByType(dragState.type, dragState.id);
+        if (item) item.manuallyAdjusted = true;
+    }
+    dragState = null;
+    document.removeEventListener('pointermove', onDrag);
+    document.removeEventListener('pointerup', endDrag);
+}
+
+// ============ 缩放 ============
+let resizeState = null;
+function startResize(e, id) {
+    console.log('[Relation Weaver] startResize', id);
+    e.preventDefault();
+    e.stopPropagation();
+    const img = state.images.find(i => i.id === id);
+    resizeState = { id, startX: e.clientX, startY: e.clientY, origW: img.w, origH: img.h };
+    document.addEventListener('pointermove', onResize);
+    document.addEventListener('pointerup', endResize);
+}
+function onResize(e) {
+    if (!resizeState) return;
+    const dx = e.clientX - resizeState.startX;
+    const dy = e.clientY - resizeState.startY;
+    const ratio = resizeState.origW / resizeState.origH;
+    let newW = resizeState.origW + dx;
+    let newH = newW / ratio;
+    if (newW < 20) { newW = 20; newH = newW / ratio; }
+    // 边界限制：缩放后不能超出画幅
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    const img = state.images.find(i => i.id === resizeState.id);
+    const maxW = Math.max(20, cw - img.x);
+    const maxH = Math.max(20, ch - img.y);
+    // 保持宽高比，取更严格的那个约束
+    if (newW > maxW) { newW = maxW; newH = newW / ratio; }
+    if (newH > maxH) { newH = maxH; newW = newH * ratio; }
+    img.w = Math.round(newW);
+    img.h = Math.round(newH);
+    const el = document.querySelector(`.img-el[data-id="${resizeState.id}"]`);
+    if (el) { el.style.width = img.w + 'px'; el.style.height = img.h + 'px'; }
+}
+function endResize() {
+    resizeState = null;
+    document.removeEventListener('pointermove', onResize);
+    document.removeEventListener('pointerup', endResize);
+}
+
+// ============ 选中与浮动工具栏 ============
+function selectElement(type, id) {
+    state.selected = { type, id };
+    if (state.appMode === 'list') {
+        renderNames();
+    } else {
+        renderTextInstances();
+    }
+    renderImages();
+    showToolbar();
+}
+
+function deselect() {
+    state.selected = null;
+    if (state.appMode === 'list') {
+        renderNames();
+    } else {
+        renderTextInstances();
+    }
+    renderImages();
+    $('toolbar').style.display = 'none';
+}
+
+function showToolbar() {
+    const tb = $('toolbar');
+    if (!state.selected) { tb.style.display = 'none'; return; }
+    const { type, id } = state.selected;
+    const isTextLike = (type === 'name' || type === 'textInst');
+    const item = isTextLike
+        ? getItemByType(type, id)
+        : state.images.find(i => i.id === id);
+    if (!item) { tb.style.display = 'none'; return; }
+    if (isTextLike) {
+        $('tbFontSize').value = item.fontSize;
+        $('tbColor').value = item.color;
+        $('tbOpacity').value = Math.round(item.opacity * 100);
+        $('tbLayer').value = item.layer || 4;
+        $('tbOrient').textContent = item.vertical ? '横排' : '纵排';
+        $('tbOrient').style.display = '';
+        $('tbFontSize').parentElement.style.display = '';
+        $('tbColor').parentElement.style.display = '';
+        $('tbOpacityWrap').style.display = '';
+        $('tbLayerWrap').style.display = '';
+    } else {
+        $('tbOrient').style.display = 'none';
+        $('tbFontSize').parentElement.style.display = 'none';
+        $('tbColor').parentElement.style.display = 'none';
+        $('tbOpacityWrap').style.display = 'none';
+        $('tbLayerWrap').style.display = 'none';
+    }
+    $('tbImgLayer').style.display = isTextLike ? 'none' : '';
+    if (!isTextLike) $('tbImgLayer').textContent = item.aboveText ? '置于文字下方' : '置于文字上方';
+    tb.style.display = 'flex';
+    positionToolbar();
+}
+
+function positionToolbar() {
+    if (!state.selected) return;
+    const { type, id } = state.selected;
+    const el = (type === 'image')
+        ? document.querySelector(`.img-el[data-id="${id}"]`)
+        : document.querySelector(`.name-el[data-id="${id}"]`);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const tb = $('toolbar');
+    let top = rect.top - 44;
+    let left = rect.left;
+    if (top < 5) top = rect.bottom + 8;
+    if (left + 560 > window.innerWidth) left = window.innerWidth - 570;
+    tb.style.top = Math.max(5, top) + 'px';
+    tb.style.left = Math.max(5, left) + 'px';
+}
+
+// 工具栏控件事件
+function getSelectedTextItem() {
+    if (!state.selected) return null;
+    if (state.selected.type === 'name' || state.selected.type === 'textInst') {
+        return getItemByType(state.selected.type, state.selected.id);
+    }
+    return null;
+}
+function redrawTextConnections() {
+    if (state.appMode === 'text') drawTextConnections();
+    else drawConnections();
+}
+$('tbFontSize').addEventListener('input', e => {
+    const n = getSelectedTextItem();
+    if (!n) return;
+    n.fontSize = parseInt(e.target.value);
+    n.manuallyAdjusted = true;
+    const el = document.querySelector(`.name-el[data-id="${n.id}"]`);
+    if (el) el.style.fontSize = n.fontSize + 'px';
+    redrawTextConnections();
+});
+$('tbColor').addEventListener('input', e => {
+    const n = getSelectedTextItem();
+    if (!n) return;
+    n.color = e.target.value;
+    n.manuallyAdjusted = true;
+    const el = document.querySelector(`.name-el[data-id="${n.id}"]`);
+    if (el) el.style.color = n.color;
+});
+$('tbOpacity').addEventListener('input', e => {
+    const n = getSelectedTextItem();
+    if (!n) return;
+    n.opacity = parseInt(e.target.value) / 100;
+    n.manuallyAdjusted = true;
+    const el = document.querySelector(`.name-el[data-id="${n.id}"]`);
+    if (el) el.style.opacity = n.opacity;
+    redrawTextConnections();
+});
+$('tbLayer').addEventListener('change', e => {
+    setSelectedLayer(parseInt(e.target.value));
+});
+
+function toggleSelectedOrientation() {
+    const n = getSelectedTextItem();
+    if (!n) return;
+    n.vertical = !n.vertical;
+    n.manuallyAdjusted = true;
+    if (state.appMode === 'list') renderNames(); else renderTextInstances();
+    redrawTextConnections();
+    showToolbar();
+}
+
+function bringToFront() {
+    if (!state.selected) return;
+    state.zCounter++;
+    if (state.selected.type === 'image') {
+        const item = state.images.find(i => i.id === state.selected.id);
+        item.aboveText = true;
+        renderImages();
+    } else {
+        const item = getItemByType(state.selected.type, state.selected.id);
+        if (item) {
+            item.zIndex = ++state.zCounter;
+            if (state.appMode === 'list') renderNames(); else renderTextInstances();
+        }
+    }
+    showToolbar();
+}
+
+function sendToBack() {
+    if (!state.selected) return;
+    if (state.selected.type === 'image') {
+        const img = state.images.find(x => x.id === state.selected.id);
+        img.aboveText = false;
+        renderImages();
+    } else {
+        const item = getItemByType(state.selected.type, state.selected.id);
+        if (item) {
+            item.zIndex = 1;
+            if (state.appMode === 'list') renderNames(); else renderTextInstances();
+        }
+    }
+    showToolbar();
+}
+
+function toggleImgLayer() {
+    if (!state.selected || state.selected.type !== 'image') return;
+    const img = state.images.find(x => x.id === state.selected.id);
+    img.aboveText = !img.aboveText;
+    renderImages();
+    showToolbar();
+}
+
+function deleteSelected() {
+    if (!state.selected) return;
+    if (state.selected.type === 'name') {
+        state.names = state.names.filter(n => n.id !== state.selected.id);
+        renderNames();
+        drawConnections();
+    } else if (state.selected.type === 'textInst') {
+        state.textInstances = state.textInstances.filter(i => i.id !== state.selected.id);
+        renderTextInstances();
+        drawTextConnections();
+    } else {
+        state.images = state.images.filter(i => i.id !== state.selected.id);
+        renderImages();
+    }
+    deselect();
+    updateEmptyHint();
+}
+
+// 点击画布空白处取消选中
+$('canvas').addEventListener('pointerdown', e => {
+    if (e.target.id === 'canvas' || e.target.classList.contains('layer')) {
+        deselect();
+    }
+});
+window.addEventListener('resize', () => {
+    positionToolbar();
+    scaleCanvasForMobile();
+});
+window.addEventListener('scroll', positionToolbar, true);
+
+// ============ 背景颜色 ============
+$('bgColor').addEventListener('input', e => {
+    state.bgColor = e.target.value;
+    $('layerBg').style.background = state.bgColor;
+    $('canvas').style.background = state.bgColor;
+});
+
+// ============ 画幅比例 ============
+document.querySelectorAll('input[name="ratio"]').forEach(r => {
+    r.addEventListener('change', e => setRatio(e.target.value));
+});
+
+// ============ 导出 ============
+// 获取当前模式下需要检查的文字元素列表
+function getActiveTextItems() {
+    return state.appMode === 'text' ? state.textInstances : state.names;
+}
+// 检查并修复超出画幅的元素，返回是否有元素被调整
+function clampAllToCanvas() {
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    let adjusted = false;
+    const items = getActiveTextItems();
+    items.forEach(item => {
+        const el = document.querySelector(`.name-el[data-id="${item.id}"]`);
+        const ew = el ? el.offsetWidth : 0;
+        const eh = el ? el.offsetHeight : 0;
+        const maxX = Math.max(0, cw - ew);
+        const maxY = Math.max(0, ch - eh);
+        const nx = Math.max(0, Math.min(maxX, item.x));
+        const ny = Math.max(0, Math.min(maxY, item.y));
+        if (nx !== item.x || ny !== item.y) {
+            item.x = nx; item.y = ny; adjusted = true;
+        }
+    });
+    state.images.forEach(img => {
+        const maxX = Math.max(0, cw - img.w);
+        const maxY = Math.max(0, ch - img.h);
+        const nx = Math.max(0, Math.min(maxX, img.x));
+        const ny = Math.max(0, Math.min(maxY, img.y));
+        if (nx !== img.x || ny !== img.y) {
+            img.x = nx; img.y = ny; adjusted = true;
+        }
+    });
+    if (adjusted) {
+        if (state.appMode === 'list') renderNames(); else renderTextInstances();
+        renderImages();
+        redrawTextConnections();
+    }
+    return adjusted;
+}
+
+// 检测是否有元素超出画幅
+function hasElementsOutOfBounds() {
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    const items = getActiveTextItems();
+    for (const item of items) {
+        const el = document.querySelector(`.name-el[data-id="${item.id}"]`);
+        const ew = el ? el.offsetWidth : 0;
+        const eh = el ? el.offsetHeight : 0;
+        if (item.x < 0 || item.y < 0 || item.x + ew > cw || item.y + eh > ch) return true;
+    }
+    for (const img of state.images) {
+        if (img.x < 0 || img.y < 0 || img.x + img.w > cw || img.y + img.h > ch) return true;
+    }
+    return false;
+}
+
+// 将 SVG 的属性内联到 style 中，确保 html2canvas 能正确捕获连线
+function inlineSvgForExport(svg) {
+    if (!svg) return;
+    const lines = svg.querySelectorAll('line');
+    lines.forEach(line => {
+        const stroke = line.getAttribute('stroke') || '#e63946';
+        const sw = line.getAttribute('stroke-width') || '2';
+        const so = line.getAttribute('stroke-opacity');
+        const lc = line.getAttribute('stroke-linecap') || 'round';
+        line.style.stroke = stroke;
+        line.style.strokeWidth = sw;
+        line.style.strokeOpacity = so !== null ? so : '1';
+        line.style.strokeLinecap = lc;
+        line.setAttribute('stroke', stroke);
+        line.setAttribute('stroke-width', sw);
+        if (so !== null) line.setAttribute('stroke-opacity', so);
+        line.setAttribute('stroke-linecap', lc);
+    });
+}
+
+async function exportImage() {
+    // 导出前检查：有元素超出画幅时提示并自动调整
+    if (hasElementsOutOfBounds()) {
+        if (!confirm('有元素超出画幅，是否自动调整到画幅内？')) return;
+        clampAllToCanvas();
+    }
+    const canvas = $('canvas');
+    // 内联 SVG 样式，确保连线被正确捕获
+    inlineSvgForExport($('layerLines'));
+    // 等待所有图片/素材加载完成
+    const imgs = canvas.querySelectorAll('img');
+    await Promise.all(Array.from(imgs).map(img => {
+        if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+        return new Promise(resolve => {
+            img.onload = resolve;
+            img.onerror = resolve;
+            // 超时保护，避免某张图卡住整个导出
+            setTimeout(resolve, 3000);
+        });
+    }));
+    // 等待字体加载完成，避免 html2canvas 用回退字体度量导致文字错位
+    if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (e) {}
+    }
+    // 临时移除选中元素的 outline，避免导出时出现选区虚线框
+    const selectedEls = canvas.querySelectorAll('.selected');
+    const savedOutlines = [];
+    selectedEls.forEach(el => {
+        savedOutlines.push({ el, outline: el.style.outline, outlineOffset: el.style.outlineOffset });
+        el.style.outline = 'none';
+        el.style.outlineOffset = '0';
+    });
+    // 按钮加载状态
+    const btns = Array.from(document.querySelectorAll('button')).filter(b => b.textContent.trim() === '导出图片');
+    btns.forEach(b => { b.disabled = true; b.textContent = '导出中...'; b.style.opacity = '0.6'; });
+    try {
+        const result = await html2canvas(canvas, {
+            backgroundColor: state.bgColor || '#ffffff',
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            allowTaint: false,
+            width: canvas.offsetWidth,
+            height: canvas.offsetHeight,
+            windowWidth: canvas.offsetWidth,
+            windowHeight: canvas.offsetHeight
+        });
+        const link = document.createElement('a');
+        link.download = 'relation-weaver.png';
+        link.href = result.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        alert('导出失败：' + err.message + '\n请检查图片素材是否可访问，或尝试刷新页面后重试。');
+    } finally {
+        // 恢复选中元素 outline
+        savedOutlines.forEach(({ el, outline, outlineOffset }) => {
+            el.style.outline = outline;
+            el.style.outlineOffset = outlineOffset;
+        });
+        btns.forEach(b => { b.disabled = false; b.textContent = '导出图片'; b.style.opacity = ''; });
+    }
+}
+
+// ============ 模式切换 ============
+function setAppMode(mode) {
+    state.appMode = mode;
+    $('panelList').style.display = mode === 'list' ? '' : 'none';
+    $('panelText').style.display = mode === 'text' ? '' : 'none';
+    const listBtn = $('modeList');
+    const textBtn = $('modeText');
+    if (mode === 'list') {
+        listBtn.classList.add('active');
+        listBtn.style.background = '#fff'; listBtn.style.color = '#1a1a1a';
+        textBtn.classList.remove('active');
+        textBtn.style.background = 'transparent'; textBtn.style.color = '#fff';
+    } else {
+        textBtn.classList.add('active');
+        textBtn.style.background = '#fff'; textBtn.style.color = '#1a1a1a';
+        listBtn.classList.remove('active');
+        listBtn.style.background = 'transparent'; listBtn.style.color = '#fff';
+    }
+    // 清空画布文本层与连线层
+    $('layerText').innerHTML = '';
+    $('layerLines').innerHTML = '';
+    $('toolbar').style.display = 'none';
+    if (mode === 'list') {
+        renderNames();
+        drawConnections();
+        $('emptyHint').style.display = state.names.length === 0 ? 'flex' : 'none';
+    } else {
+        renderTextInstances();
+        drawTextConnections();
+        $('emptyHint').style.display = state.textInstances.length === 0 ? 'flex' : 'none';
+    }
+    // 切换模式时关闭移动端面板
+    const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
+    if (activePanel) activePanel.classList.remove('open');
+}
+
+// 移动端面板抽屉切换
+function togglePanel() {
+    const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
+    if (!activePanel) return;
+    activePanel.classList.toggle('open');
+}
+// 点击移动端面板外部关闭
+document.addEventListener('pointerdown', e => {
+    const activePanel = state.appMode === 'list' ? $('panelList') : $('panelText');
+    const toggle = $('panelToggle');
+    if (!activePanel || !activePanel.classList.contains('open')) return;
+    if (activePanel.contains(e.target) || toggle.contains(e.target)) return;
+    activePanel.classList.remove('open');
+});
+
+// ============ 文本连线模式 ============
+// 在文本中查找某名字的所有出现位置（字符索引）
+function findAllOccurrences(text, name) {
+    const result = [];
+    if (!name) return result;
+    let idx = 0;
+    while ((idx = text.indexOf(name, idx)) !== -1) {
+        result.push(idx);
+        idx += name.length;
+    }
+    return result;
+}
+
+// 为文本连线生成名字实例（沿用随机/分层排版逻辑）
+function generateTextConnections() {
+    const text = $('textInput').value;
+    const connRaw = $('textConnInput').value.trim();
+    if (!text) { alert('请先粘贴文本'); return; }
+    if (!connRaw) { alert('请先输入配对名单'); return; }
+
+    // 解析配对（每行可含多对，按 × 两两分组）
+    const pairs = [];
+    connRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+        const parts = line.split(/\s*[×xX＊\*]\s*/).map(p => p.trim()).filter(Boolean);
+        for (let i = 0; i + 1 < parts.length; i += 2) {
+            pairs.push({ aText: parts[i], bText: parts[i + 1] });
+        }
+    });
+    if (pairs.length === 0) { alert('未解析到有效配对'); return; }
+    state.textPairs = pairs;
+
+    // 收集所有涉及的名字
+    const allNames = new Set();
+    pairs.forEach(p => { allNames.add(p.aText); allNames.add(p.bText); });
+
+    // 收集每个名字的所有出现次数（决定实例数量）
+    const occCounts = {};
+    allNames.forEach(name => { occCounts[name] = findAllOccurrences(text, name).length; });
+
+    const layoutMode = document.querySelector('input[name="textLayoutMode"]:checked').value;
+
+    // 生成实例列表（同名多次出现视为独立元素）
+    const instances = [];
+    allNames.forEach(name => {
+        const count = occCounts[name];
+        for (let i = 0; i < count; i++) {
+            const layer = layoutMode === 'layered' ? randInt(1, 4) : 4;
+            instances.push({ text: name, layer, vertical: false });
+        }
+    });
+
+    // 统一排版（动态字号 + 碰撞检测 + 画布自动放大）
+    const base = ratioToSize(state.ratio);
+    const baseRange = getDynamicFontRange(instances, base.w, base.h);
+    if (baseRange.base < 8) {
+        alert('名字过多，动态字号偏小，建议减少数量或更换更大画幅。');
+    }
+    const res = runLayout(instances, base.w, base.h, layoutMode);
+    setCanvasSize(res.cw, res.ch);
+
+    let seq = 1;
+    instances.forEach(inst => {
+        inst.id = 'ti' + (seq++);
+        inst.zIndex = (inst.layer || 4) * 100 + Math.floor(Math.random() * 50);
+    });
+
+    state.textInstances = instances;
+    renderTextInstances();
+    drawTextConnections();
+    $('emptyHint').style.display = 'none';
+}
+
+function renderTextInstances() {
+    const layer = $('layerText');
+    layer.innerHTML = '';
+    state.textInstances.forEach(inst => {
+        const el = document.createElement('div');
+        const isSelected = state.selected && state.selected.type === 'textInst' && state.selected.id === inst.id;
+        el.className = 'name-el' + (inst.vertical ? ' vertical' : '') + (isSelected ? ' selected' : '');
+        el.dataset.id = inst.id;
+        el.style.left = inst.x + 'px';
+        el.style.top = inst.y + 'px';
+        el.style.fontSize = inst.fontSize + 'px';
+        el.style.color = inst.color;
+        el.style.opacity = inst.opacity;
+        el.style.zIndex = inst.zIndex;
+        el.style.fontWeight = '700';
+        el.style.letterSpacing = '1px';
+        if (inst.vertical) {
+            el.innerHTML = inst.text.split('').map(c => `<span class="vchar">${c}</span>`).join('');
+        } else {
+            el.style.whiteSpace = 'nowrap';
+            el.textContent = inst.text;
+        }
+        el.addEventListener('pointerdown', e => startDrag(e, 'textInst', inst.id));
+        layer.appendChild(el);
+    });
+}
+
+function drawTextConnections() {
+    const svg = $('layerLines');
+    svg.innerHTML = '';
+    const baseWidth = parseInt($('textLineWidth').value) || 2;
+    const globalOpacity = (parseInt($('textLineOpacity').value) || 100) / 100;
+    const canvas = $('canvas');
+    const cw = canvas.offsetWidth;
+    const ch = canvas.offsetHeight;
+    svg.setAttribute('viewBox', `0 0 ${cw} ${ch}`);
+
+    const MAX_LINES_PER_PAIR = 200;
+
+    state.textPairs.forEach(pair => {
+        // 找出该配对两端的所有实例
+        const instA = state.textInstances.filter(i => i.text === pair.aText);
+        const instB = state.textInstances.filter(i => i.text === pair.bText);
+        if (instA.length === 0 || instB.length === 0) return;
+
+        let count = 0;
+        for (const a of instA) {
+            for (const b of instB) {
+                if (count >= MAX_LINES_PER_PAIR) break;
+                const elA = document.querySelector(`.name-el[data-id="${a.id}"]`);
+                const elB = document.querySelector(`.name-el[data-id="${b.id}"]`);
+                if (!elA || !elB) continue;
+                const xa = elA.offsetLeft + elA.offsetWidth / 2;
+                const ya = elA.offsetTop + elA.offsetHeight / 2;
+                const xb = elB.offsetLeft + elB.offsetWidth / 2;
+                const yb = elB.offsetTop + elB.offsetHeight / 2;
+                // 线透明度 = 两端实例透明度的平均值
+                const nameOpacity = (a.opacity + b.opacity) / 2;
+                const lineOpacity = Math.max(0, Math.min(1, nameOpacity * globalOpacity));
+                const lineWidth = baseWidth * (0.5 + 0.5 * nameOpacity);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', xa);
+                line.setAttribute('y1', ya);
+                line.setAttribute('x2', xb);
+                line.setAttribute('y2', yb);
+                line.setAttribute('stroke', '#e63946');
+                line.setAttribute('stroke-width', lineWidth);
+                line.setAttribute('stroke-opacity', lineOpacity);
+                line.setAttribute('stroke-linecap', 'round');
+                svg.appendChild(line);
+                count++;
+            }
+            if (count >= MAX_LINES_PER_PAIR) break;
+        }
+        if (count >= MAX_LINES_PER_PAIR) {
+            console.warn(`配对 ${pair.aText} × ${pair.bText} 超过 200 条线，已截断`);
+        }
+    });
+}
+
+function clearTextConnections() {
+    state.textPairs = [];
+    state.textInstances = [];
+    $('layerText').innerHTML = '';
+    $('layerLines').innerHTML = '';
+    $('emptyHint').style.display = 'flex';
+}
+
+// ============ 初始化 ============
+setCanvasSize();
+</script>
+</body>
+</html>
